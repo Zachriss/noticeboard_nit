@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "995545536560",
+    "project_id": "nit-notice-board",
+    "storage_bucket": "nit-notice-board.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:995545536560:android:2689fcae03e8161f24f5f5",
+        "android_client_info": {
+          "package_name": "com.zacharia.noticeboard_nit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNUW82sD7Nj2SK_Oxxti102BtBzObhlyw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
