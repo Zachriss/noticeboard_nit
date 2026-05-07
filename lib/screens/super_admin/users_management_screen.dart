@@ -80,11 +80,11 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   }
 
   Future<void> _showEditUserDialog(UserModel user) async {
-    final _formKey = GlobalKey<FormState>();
-    final _nameController = TextEditingController(text: user.name);
-    final _emailController = TextEditingController(text: user.email);
-    String? _selectedRole;
-    bool _isLoading = false;
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(text: user.name);
+    final emailController = TextEditingController(text: user.email);
+    String? selectedRole;
+    bool isLoading = false;
 
     showDialog(
       context: context,
@@ -93,12 +93,12 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
           title: const Text('Edit User'),
           content: SingleChildScrollView(
             child: Form(
-              key: _formKey,
+              key: formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextFormField(
-                    controller: _nameController,
+                    controller: nameController,
                     decoration: const InputDecoration(labelText: 'Full Name'),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -109,7 +109,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
-                    controller: _emailController,
+                    controller: emailController,
                     decoration: const InputDecoration(labelText: 'Email Address'),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -124,7 +124,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                   ),
                   const SizedBox(height: 16),
                    DropdownMenuFormField<String>(
-                     initialSelection: _selectedRole ?? user.role.name,
+                     initialSelection: selectedRole ?? user.role.name,
                      label: const Text('User Role'),
                      dropdownMenuEntries: const [
                        DropdownMenuEntry(value: 'student', label: 'Student'),
@@ -132,7 +132,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                        DropdownMenuEntry(value: 'superAdmin', label: 'Super Admin'),
                      ],
                      onSelected: (value) {
-                       setState(() => _selectedRole = value);
+                       setState(() => selectedRole = value);
                      },
                      validator: (value) {
                        if (value == null) {
@@ -151,17 +151,17 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: _isLoading
+              onPressed: isLoading
                   ? null
                   : () async {
-                      if (_formKey.currentState!.validate()) {
-                        setState(() => _isLoading = true);
+                      if (formKey.currentState!.validate()) {
+                        setState(() => isLoading = true);
                         try {
                           final updatedUser = user.copyWith(
-                            name: _nameController.text.trim(),
-                            email: _emailController.text.trim(),
+                            name: nameController.text.trim(),
+                            email: emailController.text.trim(),
                             role: UserRole.values.firstWhere(
-                              (e) => e.name == _selectedRole,
+                              (e) => e.name == selectedRole,
                               orElse: () => user.role,
                             ),
                           );
@@ -181,11 +181,11 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                             );
                           }
                         } finally {
-                          if (mounted) setState(() => _isLoading = false);
+                          if (mounted) setState(() => isLoading = false);
                         }
                       }
                     },
-                  child: _isLoading
+                  child: isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
@@ -329,9 +329,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
               ),
             ],
             onSelected: (value) {
-              if (value == 'logout')
+              if (value == 'logout') {
                 _logout();
-              else if (value == 'reports')
+              } else if (value == 'reports')
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => SystemReportsScreen()),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/notice_model.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/student/student_home.dart';
 import '../screens/student/notice_details_screen.dart';
@@ -12,6 +13,7 @@ import '../screens/admin/view_feedback_screen.dart';
 import '../screens/super_admin/super_admin_dashboard.dart';
 import '../screens/super_admin/manage_admins_screen.dart';
 import '../screens/super_admin/approve_notices_screen.dart';
+import '../screens/notifications/notification_screen.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -20,6 +22,7 @@ class AppRoutes {
   static const String noticeDetails = '/notice/details';
   static const String faq = '/faq';
   static const String feedback = '/feedback';
+  static const String notifications = '/notifications';
   static const String adminDashboard = '/admin/dashboard';
   static const String createNotice = '/admin/create-notice';
   static const String manageNotices = '/admin/manage-notices';
@@ -37,12 +40,19 @@ class AppRoutes {
       case studentProfile:
         return MaterialPageRoute(builder: (_) => const ProfileScreen());
       case noticeDetails:
-        final noticeId = settings.arguments as String;
-        return MaterialPageRoute(builder: (_) => NoticeDetailsScreen(noticeId: noticeId));
+        final noticeArgument = settings.arguments;
+        if (noticeArgument is! NoticeModel) {
+          return MaterialPageRoute(builder: (_) => const LoginScreen());
+        }
+        return MaterialPageRoute(
+          builder: (_) => NoticeDetailScreen(notice: noticeArgument),
+        );
       case faq:
-        return MaterialPageRoute(builder: (_) => const FAQScreen());
+        return MaterialPageRoute(builder: (_) => const FaqScreen());
       case feedback:
         return MaterialPageRoute(builder: (_) => const FeedbackScreen());
+      case notifications:
+        return MaterialPageRoute(builder: (_) => const NotificationScreen());
       case adminDashboard:
         return MaterialPageRoute(builder: (_) => const AdminDashboard());
       case createNotice:

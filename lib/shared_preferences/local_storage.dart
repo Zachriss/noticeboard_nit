@@ -15,6 +15,8 @@ class LocalStorage {
   static const String keyUserYear = 'userYear';
   static const String keyUserPhone = 'userPhone';
   static const String keyIsProfileSetup = 'isProfileSetup';
+  static const String keyNotificationsEnabled = 'notificationsEnabled';
+  static const String keyNotificationSoundEnabled = 'notificationSoundEnabled';
 
   // First launch check
   static bool get isFirstLaunch => _prefs?.getBool(keyIsFirstLaunch) ?? true;
@@ -26,6 +28,18 @@ class LocalStorage {
   static String get userRole => _prefs?.getString(keyUserRole) ?? 'student';
   static Future<void> setUserRole(String role) async {
     await _prefs?.setString(keyUserRole, role);
+  }
+
+  static bool get notificationEnabled =>
+      _prefs?.getBool(keyNotificationsEnabled) ?? true;
+  static Future<void> setNotificationEnabled(bool value) async {
+    await _prefs?.setBool(keyNotificationsEnabled, value);
+  }
+
+  static bool get notificationSoundEnabled =>
+      _prefs?.getBool(keyNotificationSoundEnabled) ?? true;
+  static Future<void> setNotificationSoundEnabled(bool value) async {
+    await _prefs?.setBool(keyNotificationSoundEnabled, value);
   }
 
   // Profile Data

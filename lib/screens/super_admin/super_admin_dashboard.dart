@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/notice_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/notice_model.dart';
 import '../../models/user_model.dart';
+import '../../providers/notification_provider.dart';
+import '../../widgets/notification_badge.dart';
 import '../auth/login_screen.dart';
 import 'manage_admins_screen.dart';
 import 'approve_notices_screen.dart';
@@ -12,6 +15,7 @@ import 'profile_screen.dart';
 import 'categories_screen.dart';
 import 'users_management_screen.dart';
 import 'system_settings_screen.dart';
+import '../notifications/notification_screen.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -36,7 +40,15 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     final currentUser = _authService.currentUser;
     if (currentUser != null) {
       final user = await _authService.getUserData(currentUser.uid);
-      if (mounted) setState(() => _user = user);
+      if (mounted) {
+        setState(() => _user = user);
+        if (user != null) {
+          context.read<NotificationProvider>().initialize(
+            userId: user.id,
+            role: user.role.name,
+          );
+        }
+      }
     }
   }
 
@@ -60,9 +72,20 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         ),
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
+          Consumer<NotificationProvider>(
+            builder: (context, provider, _) {
+              return NotificationBadge(
+                count: provider.unreadCount,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationScreen(),
+                    ),
+                  );
+                },
+              );
+            },
           ),
           GestureDetector(
             onTap: () {
@@ -111,9 +134,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
               ),
             ],
             onSelected: (value) {
-              if (value == 'logout')
+              if (value == 'logout') {
                 _logout();
-              else if (value == 'profile')
+              } else if (value == 'profile')
                 Navigator.push(
                   context,
                   MaterialPageRoute(

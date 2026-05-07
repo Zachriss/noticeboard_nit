@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/notice_model.dart';
 import '../../models/user_model.dart';
+import '../../providers/notification_provider.dart';
+import '../../widgets/notification_badge.dart';
 import '../../widgets/notice_card.dart';
 import '../../shared_preferences/local_storage.dart';
 import '../../services/notice_service.dart';
 import '../../services/like_service.dart';
 import '../../services/auth_service.dart';
+import '../notifications/notification_screen.dart';
 import 'notice_details_screen.dart';
 import 'profile_screen.dart';
 import 'feedback_screen.dart';
@@ -27,7 +31,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   final NoticeService _noticeService = NoticeService();
   final LikeService _likeService = LikeService();
   final AuthService _authService = AuthService();
-  
+
   String _searchText = '';
   String? _selectedCategory;
   int _currentIndex = 0;
@@ -52,7 +56,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final firebaseUser = _authService.currentUser;
     if (firebaseUser != null) {
       final user = await _authService.getUserData(firebaseUser.uid);
-      if (mounted) setState(() => _currentUser = user);
+      if (mounted) {
+        setState(() => _currentUser = user);
+        context.read<NotificationProvider>().initialize(
+          userId: firebaseUser.uid,
+          role: 'student',
+        );
+      }
     }
   }
 
@@ -83,8 +93,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notices'),
-          BottomNavigationBarItem(icon: Icon(Icons.feedback), label: 'Feedback'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications),
+            label: 'Notices',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.feedback),
+            label: 'Feedback',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.help), label: 'FAQs'),
         ],
       ),
@@ -103,10 +119,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           CircleAvatar(
             radius: 18,
             backgroundColor: Colors.white,
-            child: Image.asset(
-              'assets/images/logo.png',
-              fit: BoxFit.contain,
-            ),
+            child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
           ),
           const SizedBox(width: 10),
           const Text(
@@ -116,9 +129,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ],
       ),
       actions: [
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.notifications_none),
+        Consumer<NotificationProvider>(
+          builder: (context, provider, _) {
+            return NotificationBadge(
+              count: provider.unreadCount,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                );
+              },
+            );
+          },
         ),
         GestureDetector(
           onTap: () => _showProfileMenu(),
@@ -128,8 +150,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               radius: 16,
               backgroundColor: Colors.white,
               child: Text(
-                LocalStorage.userName.isNotEmpty 
-                    ? LocalStorage.userName[0].toUpperCase() 
+                LocalStorage.userName.isNotEmpty
+                    ? LocalStorage.userName[0].toUpperCase()
                     : 'S',
                 style: const TextStyle(
                   color: AppTheme.primaryColor,
@@ -144,10 +166,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           icon: const Icon(Icons.more_vert),
           itemBuilder: (context) => [
             const PopupMenuItem(value: 'downloads', child: Text('Downloads')),
-            const PopupMenuItem(value: 'help_center', child: Text('Help Center')),
+            const PopupMenuItem(
+              value: 'help_center',
+              child: Text('Help Center'),
+            ),
             const PopupMenuItem(value: 'settings', child: Text('Settings')),
             const PopupMenuItem(value: 'about', child: Text('About App')),
-            const PopupMenuItem(value: 'admin_login', child: Text('Admin Login')),
+            const PopupMenuItem(
+              value: 'admin_login',
+              child: Text('Admin Login'),
+            ),
           ],
           onSelected: (value) {
             if (value == 'admin_login') {
@@ -205,7 +233,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           },
                         )
                       : null,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -224,10 +255,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             children: [
               const Text(
                 'Filter by:',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -244,10 +272,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       hint: const Text('Select category'),
                       isExpanded: true,
                       items: _categories.map((cat) {
-                        return DropdownMenuItem(
-                          value: cat,
-                          child: Text(cat),
-                        );
+                        return DropdownMenuItem(value: cat, child: Text(cat));
                       }).toList(),
                       onChanged: (value) {
                         setState(() {
@@ -263,9 +288,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ),
 
         // Notices List from Firebase
-        Expanded(
-          child: _buildNoticesList(),
-        ),
+        Expanded(child: _buildNoticesList()),
       ],
     );
   }
@@ -289,8 +312,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         hintText: 'Search notices...',
                         fillColor: Colors.white,
                         filled: true,
-                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Colors.grey,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -344,7 +372,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 60, color: Colors.grey.shade400),
+                Icon(
+                  Icons.error_outline,
+                  size: 60,
+                  color: Colors.grey.shade400,
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Error loading notices',
@@ -356,7 +388,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         }
 
         var notices = snapshot.data ?? [];
-        
+
         // Filter by search text
         if (_searchText.isNotEmpty) {
           notices = notices.where((n) {
@@ -409,9 +441,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       await _noticeService.incrementLikeCount(notice.id);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -431,8 +463,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               radius: 40,
               backgroundColor: AppTheme.primaryColor,
               child: Text(
-                LocalStorage.userName.isNotEmpty 
-                    ? LocalStorage.userName[0].toUpperCase() 
+                LocalStorage.userName.isNotEmpty
+                    ? LocalStorage.userName[0].toUpperCase()
                     : 'S',
                 style: const TextStyle(
                   fontSize: 32,
@@ -443,11 +475,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              LocalStorage.userName.isNotEmpty ? LocalStorage.userName : 'Student',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              LocalStorage.userName.isNotEmpty
+                  ? LocalStorage.userName
+                  : 'Student',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             Text(
               '${LocalStorage.userDepartment} • ${LocalStorage.userYear}',
@@ -478,7 +509,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.logout, color: AppTheme.secondaryColor),
-              title: const Text('Logout', style: TextStyle(color: AppTheme.secondaryColor)),
+              title: const Text(
+                'Logout',
+                style: TextStyle(color: AppTheme.secondaryColor),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _showLogoutDialog();
@@ -508,7 +542,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               if (!mounted) return;
               // Navigate to splash which will handle role-based routing
             },
-            style: TextButton.styleFrom(foregroundColor: AppTheme.secondaryColor),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.secondaryColor,
+            ),
             child: const Text('Logout'),
           ),
         ],

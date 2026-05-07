@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../../shared_preferences/local_storage.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,6 +13,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _darkModeEnabled = false;
   bool _autoRefreshEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationsEnabled = LocalStorage.notificationEnabled;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +45,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.person, color: AppTheme.primaryColor),
+                  leading: const Icon(
+                    Icons.person,
+                    color: AppTheme.primaryColor,
+                  ),
                   title: const Text('Edit Profile'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {},
@@ -69,17 +79,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               children: [
                 SwitchListTile(
-                  secondary: const Icon(Icons.notifications_active, color: AppTheme.primaryColor),
+                  secondary: const Icon(
+                    Icons.notifications_active,
+                    color: AppTheme.primaryColor,
+                  ),
                   title: const Text('Push Notifications'),
                   value: _notificationsEnabled,
                   activeThumbColor: AppTheme.primaryColor,
                   onChanged: (value) {
                     setState(() => _notificationsEnabled = value);
+                    LocalStorage.setNotificationEnabled(value);
                   },
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
-                  secondary: const Icon(Icons.refresh, color: AppTheme.primaryColor),
+                  secondary: const Icon(
+                    Icons.refresh,
+                    color: AppTheme.primaryColor,
+                  ),
                   title: const Text('Auto Refresh Notices'),
                   value: _autoRefreshEnabled,
                   activeThumbColor: AppTheme.primaryColor,
@@ -104,7 +121,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           Card(
             child: SwitchListTile(
-              secondary: const Icon(Icons.dark_mode, color: AppTheme.primaryColor),
+              secondary: const Icon(
+                Icons.dark_mode,
+                color: AppTheme.primaryColor,
+              ),
               title: const Text('Dark Mode'),
               value: _darkModeEnabled,
               activeThumbColor: AppTheme.primaryColor,
@@ -143,14 +163,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.privacy_tip, color: AppTheme.primaryColor),
+                  leading: const Icon(
+                    Icons.privacy_tip,
+                    color: AppTheme.primaryColor,
+                  ),
                   title: const Text('Privacy Policy'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {},
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.description, color: AppTheme.primaryColor),
+                  leading: const Icon(
+                    Icons.description,
+                    color: AppTheme.primaryColor,
+                  ),
                   title: const Text('Terms of Service'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {},
@@ -164,10 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Center(
             child: Text(
               'Version 1.0.0',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ),
         ],

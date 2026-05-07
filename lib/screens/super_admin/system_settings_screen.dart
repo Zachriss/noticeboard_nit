@@ -99,9 +99,9 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
               ),
             ],
             onSelected: (value) {
-              if (value == 'logout')
+              if (value == 'logout') {
                 _logout();
-              else if (value == 'reports')
+              } else if (value == 'reports')
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => SystemReportsScreen()),

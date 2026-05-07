@@ -1,9 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/notice_model.dart';
+import '../models/notification_model.dart';
 import '../core/services/firebase_service.dart';
+import 'notification_service.dart';
 
 class NoticeService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   // Get all approved notices - public for all authenticated users
   Stream<List<NoticeModel>> getAllNotices() {
@@ -96,7 +99,20 @@ class NoticeService {
         .collection(FirebaseService.noticesCollection)
         .doc();
 
-    await docRef.set(notice.copyWith(id: docRef.id).toMap());
+    final noticeWithId = notice.copyWith(id: docRef.id);
+    await docRef.set(noticeWithId.toMap());
+
+    await _notificationService.sendToRole(
+      targetRole: 'superAdmin',
+      title: 'New notice submitted',
+      body: '${notice.title} is waiting for approval.',
+      type: NotificationType.systemActivity,
+      senderId: notice.authorId,
+      senderRole: 'admin',
+      relatedNoticeId: docRef.id,
+      category: notice.category,
+    );
+
     return docRef.id;
   }
 
@@ -106,14 +122,41 @@ class NoticeService {
         .collection(FirebaseService.noticesCollection)
         .doc(notice.id)
         .update(notice.toMap());
+
+    if (notice.status == NoticeStatus.approved) {
+      await _notificationService.sendToRole(
+        targetRole: 'student',
+        title: 'Notice updated',
+        body: '${notice.title} has been updated.',
+        type: NotificationType.noticeUpdated,
+        senderId: notice.authorId,
+        senderRole: 'admin',
+        relatedNoticeId: notice.id,
+        category: notice.category,
+      );
+    }
   }
 
   // Delete notice
   Future<void> deleteNotice(String noticeId) async {
+    final notice = await getNotice(noticeId);
     await _firestore
         .collection(FirebaseService.noticesCollection)
         .doc(noticeId)
         .delete();
+
+    if (notice != null && notice.status == NoticeStatus.approved) {
+      await _notificationService.sendToRole(
+        targetRole: 'student',
+        title: 'Notice removed',
+        body: '${notice.title} has been deleted.',
+        type: NotificationType.noticeDeleted,
+        senderId: notice.authorId,
+        senderRole: 'admin',
+        relatedNoticeId: notice.id,
+        category: notice.category,
+      );
+    }
   }
 
   // Approve notice
@@ -122,6 +165,21 @@ class NoticeService {
         .collection(FirebaseService.noticesCollection)
         .doc(noticeId)
         .update({'status': 'approved'});
+
+    final notice = await getNotice(noticeId);
+    if (notice != null) {
+      await _notificationService.sendToRole(
+        targetRole: 'admin',
+        userId: notice.authorId,
+        title: 'Your notice has been approved',
+        body: '${notice.title} is now live for students.',
+        type: NotificationType.approval,
+        senderId: 'system',
+        senderRole: 'superAdmin',
+        relatedNoticeId: notice.id,
+        category: notice.category,
+      );
+    }
   }
 
   // Unapprove notice (change from approved back to pending)
@@ -142,6 +200,23 @@ class NoticeService {
         .collection(FirebaseService.noticesCollection)
         .doc(noticeId)
         .update(updateData);
+
+    final notice = await getNotice(noticeId);
+    if (notice != null) {
+      await _notificationService.sendToRole(
+        targetRole: 'admin',
+        userId: notice.authorId,
+        title: 'Your notice was rejected',
+        body: reason != null && reason.isNotEmpty
+            ? 'Reason: $reason'
+            : '${notice.title} was rejected by Super Admin.',
+        type: NotificationType.rejection,
+        senderId: 'system',
+        senderRole: 'superAdmin',
+        relatedNoticeId: notice.id,
+        category: notice.category,
+      );
+    }
   }
 
   // Search notices

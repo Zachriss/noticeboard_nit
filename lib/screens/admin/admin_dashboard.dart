@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/notice_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/notice_model.dart';
 import '../../models/user_model.dart';
+import '../../providers/notification_provider.dart';
+import '../../widgets/notification_badge.dart';
 import '../../widgets/notice_card.dart';
 import '../auth/login_screen.dart';
+import '../notifications/notification_screen.dart';
 import 'create_notice_screen.dart';
 import 'manage_notices_screen.dart';
 
@@ -21,7 +25,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final AuthService _authService = AuthService();
   UserModel? _user;
   int _currentIndex = 0;
-  
+
   int _totalNotices = 0;
   int _pendingNotices = 0;
   int _totalLikes = 0;
@@ -37,12 +41,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _loadUser() async {
     final currentUser = _authService.currentUser;
-    if (currentUser != null) {
-      final user = await _authService.getUserData(currentUser.uid);
-      if (mounted) {
-        setState(() => _user = user);
-        _loadStatistics(currentUser.uid);
-      }
+    if (currentUser == null) {
+      return;
+    }
+
+    final user = await _authService.getUserData(currentUser.uid);
+    if (!mounted) return;
+
+    setState(() => _user = user);
+
+    if (user != null) {
+      context.read<NotificationProvider>().initialize(
+        userId: user.id,
+        role: user.role.name,
+      );
+      await _loadStatistics(user.id);
+    } else {
+      setState(() => _isLoadingStats = false);
     }
   }
 
@@ -56,16 +71,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _noticeService.getTotalFeedbackCount(),
       ]);
 
-      if (mounted) {
-        setState(() {
-          _totalNotices = results[0];
-          _pendingNotices = results[1];
-          _totalLikes = results[2];
-          _totalStudents = results[3];
-          _totalFeedback = results[4];
-          _isLoadingStats = false;
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _totalNotices = results[0];
+        _pendingNotices = results[1];
+        _totalLikes = results[2];
+        _totalStudents = results[3];
+        _totalFeedback = results[4];
+        _isLoadingStats = false;
+      });
     } catch (e) {
       if (mounted) setState(() => _isLoadingStats = false);
     }
@@ -80,10 +95,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             CircleAvatar(
               radius: 18,
               backgroundColor: Colors.white,
-              child: Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.contain,
-              ),
+              child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
             ),
             const SizedBox(width: 10),
             const Text(
@@ -94,7 +106,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(icon: const Icon(Icons.notifications_none), onPressed: () {}),
+          Consumer<NotificationProvider>(
+            builder: (context, provider, _) {
+              return NotificationBadge(
+                count: provider.unreadCount,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationScreen(),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
           GestureDetector(
             onTap: () {},
             child: Padding(
@@ -103,7 +129,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 radius: 16,
                 backgroundColor: Colors.white,
                 child: Text(
-                  _user?.name.isNotEmpty == true ? _user!.name[0].toUpperCase() : 'A',
+                  _user?.name.isNotEmpty == true
+                      ? _user!.name[0].toUpperCase()
+                      : 'A',
                   style: const TextStyle(
                     color: AppTheme.primaryColor,
                     fontSize: 14,
@@ -118,7 +146,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'profile', child: Text('Profile')),
               const PopupMenuItem(value: 'settings', child: Text('Settings')),
-              const PopupMenuItem(value: 'logout', child: Text('Logout', style: TextStyle(color: AppTheme.secondaryColor))),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Text(
+                  'Logout',
+                  style: TextStyle(color: AppTheme.secondaryColor),
+                ),
+              ),
             ],
             onSelected: (value) {
               if (value == 'logout') _logout();
@@ -145,22 +179,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
         onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.article),
-            label: 'Notices',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Notices'),
           BottomNavigationBarItem(
             icon: Icon(Icons.feedback),
             label: 'Feedback',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
@@ -330,7 +355,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildStatCard(String value, String title, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String value,
+    String title,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),

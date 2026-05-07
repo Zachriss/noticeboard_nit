@@ -101,9 +101,9 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
               ),
             ],
             onSelected: (value) {
-              if (value == 'logout')
+              if (value == 'logout') {
                 _logout();
-              else if (value == 'profile')
+              } else if (value == 'profile')
                 Navigator.push(
                   context,
                   MaterialPageRoute(
