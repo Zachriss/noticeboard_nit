@@ -127,8 +127,11 @@ class NotificationService {
         .map(
           (snapshot) => snapshot.docs
               .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
-              .where((notification) =>
-                  notification.userId.isEmpty || notification.userId == userId)
+              .where(
+                (notification) =>
+                    notification.userId.isEmpty ||
+                    notification.userId == userId,
+              )
               .toList(),
         );
   }
@@ -152,13 +155,15 @@ class NotificationService {
     final snapshot = await _firestore
         .collection(FirebaseService.notificationsCollection)
         .where('targetRole', whereIn: [normalizedRole, 'all'])
-        .where('userId', whereIn: [userId, ''])
         .where('isRead', isEqualTo: false)
         .get();
 
     final batch = _firestore.batch();
     for (final doc in snapshot.docs) {
-      batch.update(doc.reference, {'isRead': true});
+      final notification = NotificationModel.fromMap(doc.data(), doc.id);
+      if (notification.userId.isEmpty || notification.userId == userId) {
+        batch.update(doc.reference, {'isRead': true});
+      }
     }
     await batch.commit();
   }
@@ -168,12 +173,14 @@ class NotificationService {
     final snapshot = await _firestore
         .collection(FirebaseService.notificationsCollection)
         .where('targetRole', whereIn: [normalizedRole, 'all'])
-        .where('userId', whereIn: [userId, ''])
         .get();
 
     final batch = _firestore.batch();
     for (final doc in snapshot.docs) {
-      batch.delete(doc.reference);
+      final notification = NotificationModel.fromMap(doc.data(), doc.id);
+      if (notification.userId.isEmpty || notification.userId == userId) {
+        batch.delete(doc.reference);
+      }
     }
     await batch.commit();
   }
@@ -193,10 +200,18 @@ class NotificationService {
     return _firestore
         .collection(FirebaseService.notificationsCollection)
         .where('targetRole', whereIn: [normalizedRole, 'all'])
-        .where('userId', whereIn: [userId, ''])
         .where('isRead', isEqualTo: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
+              .where(
+                (notification) =>
+                    notification.userId.isEmpty ||
+                    notification.userId == userId,
+              )
+              .length,
+        );
   }
 
   Future<String?> getFcmToken() async {
@@ -204,4 +219,7 @@ class NotificationService {
   }
 
   String _normalizeRole(String role) {
-    if 
+    if (role == 'super_admin') return 'superAdmin';
+    return role;
+  }
+}

@@ -182,4 +182,18 @@ class NotificationProvider extends ChangeNotifier {
   Future<void> setSoundEnabled(bool value) async {
     _soundEnabled = value;
     await LocalStorage.setNotificationSoundEnabled(value);
-    notifyListene
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _notificationsSubscription?.cancel();
+    _unreadCountSubscription?.cancel();
+    super.dispose();
+  }
+
+  String _normalizeRole(String role) {
+    if (role == 'super_admin') return 'superAdmin';
+    return role;
+  }
+}

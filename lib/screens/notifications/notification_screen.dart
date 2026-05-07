@@ -47,9 +47,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (!mounted || user == null) return;
 
     await context.read<NotificationProvider>().initialize(
-          userId: user.id,
-          role: user.role.name,
-        );
+      userId: user.id,
+      role: user.role.name,
+    );
   }
 
   @override
@@ -180,7 +180,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               onToggleRead: () => provider.toggleReadStatus(notification.id),
               onDelete: () => provider.deleteNotification(notification.id),
             );
-          }).toList(),
+          }),
         ];
       }).toList(),
     );
@@ -282,4 +282,26 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return AlertDialog(
           title: const Text('Clear all notifications'),
           content: const Text(
-            'Are you sure you want to delete all notifications
+            'Are you sure you want to delete all notifications?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                context.read<NotificationProvider>().clearAllNotifications();
+                Navigator.pop(context);
+              },
+              child: const Text(
+                'Clear',
+                style: TextStyle(color: AppTheme.secondaryColor),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
