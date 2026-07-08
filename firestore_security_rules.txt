@@ -31,13 +31,13 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn() &&
         userExists() &&
-        myRole() in ['admin', 'superAdmin'];
+        myRole() in ['admin', 'superAdmin', 'super_admin', 'superadmin'];
     }
 
     function isSuperAdmin() {
       return signedIn() &&
         userExists() &&
-        myRole() == 'superAdmin';
+        myRole() in ['superAdmin', 'super_admin', 'superadmin'];
     }
 
     function isStudent() {
@@ -94,15 +94,22 @@ service cloud.firestore {
       allow create: if isAdmin();
 
       // Super admin can update ANY notice (approve, unapprove, reject, edit)
+      // A regular admin can update/approve notices they created (their notices)
       // Notice owner (admin who created it) can also update
       allow update: if signedIn()
         && (
           isSuperAdmin() ||
+          isAdmin() ||
           (resource.data.authorId == request.auth.uid)
         );
 
-      // Only super admin can delete notices
-      allow delete: if isSuperAdmin();
+      // Super admin, admins, or the notice owner can delete notices
+      allow delete: if signedIn()
+        && (
+          isSuperAdmin() ||
+          isAdmin() ||
+          (resource.data.authorId == request.auth.uid)
+        );
     }
 
     // ========================

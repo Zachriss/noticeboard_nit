@@ -5,27 +5,49 @@ import '../models/faq_model.dart';
 class FAQService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  List<FAQModel> _sortByOrder(List<FAQModel> list) {
+    list.sort((a, b) => a.order.compareTo(b.order));
+    return list;
+  }
+
   Future<List<FAQModel>> getAllFAQs() async {
     final snapshot = await _firestore
         .collection(FirebaseCollections.faqs)
         .where('isActive', isEqualTo: true)
-        .orderBy('order', descending: false)
         .get();
 
-    return snapshot.docs
-        .map((doc) => FAQModel.fromMap(doc.data(), doc.id))
-        .toList();
+    return _sortByOrder(
+      snapshot.docs
+          .map((doc) => FAQModel.fromMap(doc.data(), doc.id))
+          .toList(),
+    );
   }
 
   Stream<List<FAQModel>> getFAQsStream() {
+    // Use a single-field filter only (no orderBy) to avoid requiring a
+    // composite index on (isActive, order). Sort client-side instead.
     return _firestore
         .collection(FirebaseCollections.faqs)
         .where('isActive', isEqualTo: true)
-        .orderBy('order', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => FAQModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) => _sortByOrder(
+              snapshot.docs
+                  .map((doc) => FAQModel.fromMap(doc.data(), doc.id))
+                  .toList(),
+            ));
+  }
+
+  // Stream of ALL FAQs (active + inactive) for admin management.
+  // Plain collection stream — no composite index required.
+  Stream<List<FAQModel>> getAllFaqsStream() {
+    return _firestore
+        .collection(FirebaseCollections.faqs)
+        .snapshots()
+        .map((snapshot) => _sortByOrder(
+              snapshot.docs
+                  .map((doc) => FAQModel.fromMap(doc.data(), doc.id))
+                  .toList(),
+            ));
   }
 
   Future<List<FAQModel>> getFAQsByCategory(String category) async {
@@ -33,12 +55,13 @@ class FAQService {
         .collection(FirebaseCollections.faqs)
         .where('isActive', isEqualTo: true)
         .where('category', isEqualTo: category)
-        .orderBy('order', descending: false)
         .get();
 
-    return snapshot.docs
-        .map((doc) => FAQModel.fromMap(doc.data(), doc.id))
-        .toList();
+    return _sortByOrder(
+      snapshot.docs
+          .map((doc) => FAQModel.fromMap(doc.data(), doc.id))
+          .toList(),
+    );
   }
 
   Future<void> createFAQ(FAQModel faq) async {

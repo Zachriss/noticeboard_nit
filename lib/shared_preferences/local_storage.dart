@@ -85,10 +85,14 @@ class LocalStorage {
     required String name,
     required String department,
     required String year,
+    String? phone,
   }) async {
     await setUserName(name);
     await setUserDepartment(department);
     await setUserYear(year);
+    if (phone != null) {
+      await setUserPhone(phone);
+    }
     await setProfileSetup(true);
   }
 

@@ -65,6 +65,18 @@ class FeedbackService {
     });
   }
 
+  // Update the status of a feedback (admin action).
+  // Sets isResolved based on whether the status is 'resolved'.
+  Future<void> updateFeedbackStatus(String feedbackId, String status) async {
+    await _firestore
+        .collection(FirebaseService.feedbackCollection)
+        .doc(feedbackId)
+        .update({
+      'status': status,
+      'isResolved': status == 'resolved',
+    });
+  }
+
   // Delete feedback
   Future<void> deleteFeedback(String feedbackId) async {
     await _firestore

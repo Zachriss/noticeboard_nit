@@ -16,6 +16,7 @@ import '../super_admin/profile_screen.dart';
 import 'create_notice_screen.dart';
 import 'manage_notices_screen.dart';
 import 'feedback_list_screen.dart';
+import 'faq_manage_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -400,6 +401,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 },
               );
             },
+          ),
+          const SizedBox(height: 24),
+
+          // Manage FAQs shortcut
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const FaqManageScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.help_outline),
+              label: const Text('Manage FAQs'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
           ),
         ],
       ),

@@ -150,6 +150,17 @@ class FeedbackProvider extends ChangeNotifier {
     }
   }
 
+  /// Update the status of feedback (admin action).
+  Future<void> updateFeedbackStatus(String feedbackId, String status) async {
+    try {
+      await _feedbackService.updateFeedbackStatus(feedbackId, status);
+      // Stream will automatically update the list.
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
   /// Delete feedback (admin or user).
   Future<void> deleteFeedback(String feedbackId) async {
     try {

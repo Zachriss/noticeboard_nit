@@ -13,7 +13,8 @@ class StudentOnboardingScreen extends StatefulWidget {
 class _StudentOnboardingScreenState extends State<StudentOnboardingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  
+  final _phoneController = TextEditingController();
+
   String? _selectedDepartment;
   String? _selectedYear;
 
@@ -43,6 +44,7 @@ class _StudentOnboardingScreenState extends State<StudentOnboardingScreen> {
       name: _nameController.text.trim(),
       department: _selectedDepartment!,
       year: _selectedYear!,
+      phone: _phoneController.text.trim(),
     );
 
     if (!mounted) return;
@@ -50,6 +52,13 @@ class _StudentOnboardingScreenState extends State<StudentOnboardingScreen> {
       context,
       MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
   }
 
   @override
@@ -100,6 +109,31 @@ class _StudentOnboardingScreenState extends State<StudentOnboardingScreen> {
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your name';
+                    }
+                    // Only alphabetic characters and spaces allowed.
+                    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(value.trim())) {
+                      return 'Name must contain only letters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    prefixIcon: Icon(Icons.phone_outlined),
+                  ),
+                  validator: (value) {
+                    final phone = value?.trim() ?? '';
+                    if (phone.isEmpty) {
+                      return 'Please enter your phone number';
+                    }
+                    // Must start with 06 or 07 and be exactly 10 digits.
+                    if (!RegExp(r'^(06|07)\d{8}$').hasMatch(phone)) {
+                      return 'Enter a valid number starting with 06 or 07 (10 digits)';
                     }
                     return null;
                   },

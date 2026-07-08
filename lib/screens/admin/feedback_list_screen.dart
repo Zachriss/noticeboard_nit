@@ -247,17 +247,35 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
                   ),
                 ),
                 const Spacer(),
-                if (!feedback.isResolved && feedback.status != 'resolved')
-                  SizedBox(
-                    height: 32,
-                    child: TextButton.icon(
-                      onPressed: () => _resolveFeedback(feedback.id),
-                      icon: const Icon(Icons.check_circle_outline,
-                          size: 16, color: Colors.green),
-                      label: const Text('Resolve',
-                          style: TextStyle(fontSize: 12, color: Colors.green)),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, size: 20),
+                  tooltip: 'Update status',
+                  onSelected: (status) {
+                    if (status == 'resolved') {
+                      _resolveFeedback(feedback.id);
+                    } else {
+                      _updateStatus(feedback.id, status);
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'pending',
+                      child: Text('Mark Pending'),
                     ),
-                  ),
+                    PopupMenuItem(
+                      value: 'in_progress',
+                      child: Text('Mark In Progress'),
+                    ),
+                    PopupMenuItem(
+                      value: 'resolved',
+                      child: Text('Mark Resolved'),
+                    ),
+                    PopupMenuItem(
+                      value: 'rejected',
+                      child: Text('Mark Rejected'),
+                    ),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -341,6 +359,29 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
           const SnackBar(
             content: Text('Feedback marked as resolved'),
             backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateStatus(String feedbackId, String status) async {
+    try {
+      await _feedbackService.updateFeedbackStatus(feedbackId, status);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Feedback marked as ${status.replaceAll('_', ' ')}'),
+            backgroundColor: Colors.blue,
           ),
         );
       }

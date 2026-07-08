@@ -25,8 +25,10 @@ class _ScamsScreenState extends State<ScamsScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<NoticeModel>>(
-      // Only approved notices belonging to the Scams/Fraud category.
-      stream: _noticeService.getNoticesByCategory('Scams/Fraud'),
+      // Use the indexed "approved + createdAt" query, then filter category
+      // client-side. This avoids needing a composite index on
+      // (status, category, createdAt) which would fail when online.
+      stream: _noticeService.getAllNotices(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -53,6 +55,11 @@ class _ScamsScreenState extends State<ScamsScreen> {
         }
 
         var notices = snapshot.data ?? [];
+
+        // Filter by the Scams/Fraud category (client-side).
+        notices = notices
+            .where((n) => n.category == 'Scams/Fraud')
+            .toList();
 
         // Filter by search text.
         if (_searchText.isNotEmpty) {
