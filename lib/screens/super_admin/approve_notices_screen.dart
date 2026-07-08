@@ -171,7 +171,6 @@ class _ApproveNoticesScreenState extends State<ApproveNoticesScreen> {
             .where((notice) => notice.status == NoticeStatus.rejected)
             .toList();
       case NoticeFilter.all:
-      default:
         return notices;
     }
   }
@@ -412,7 +411,6 @@ class _ApproveNoticesScreenState extends State<ApproveNoticesScreen> {
         text = 'Rejected';
         break;
       case NoticeStatus.pending:
-      default:
         color = Colors.orange;
         icon = Icons.hourglass_empty;
         text = 'Pending';
@@ -566,9 +564,6 @@ class _ApproveNoticesScreenState extends State<ApproveNoticesScreen> {
             ),
           ],
         );
-
-      default:
-        return const SizedBox();
     }
   }
 
@@ -598,7 +593,7 @@ class _ApproveNoticesScreenState extends State<ApproveNoticesScreen> {
             children: [
               Icon(Icons.error, color: Colors.white),
               const SizedBox(width: 8),
-              const Text('Failed to approve notice'),
+              Expanded(child: Text('Failed to approve notice: $e')),
             ],
           ),
           backgroundColor: Colors.red,
@@ -668,7 +663,7 @@ class _ApproveNoticesScreenState extends State<ApproveNoticesScreen> {
               children: [
                 Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 8),
-                const Text('Failed to unapprove notice'),
+                Expanded(child: Text('Failed to unapprove notice: $e')),
               ],
             ),
             backgroundColor: Colors.red,
@@ -769,7 +764,7 @@ class _ApproveNoticesScreenState extends State<ApproveNoticesScreen> {
               children: [
                 Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 8),
-                const Text('Failed to reject notice'),
+                Expanded(child: Text('Failed to reject notice: $e')),
               ],
             ),
             backgroundColor: Colors.red,
@@ -920,7 +915,7 @@ class _ApproveNoticesScreenState extends State<ApproveNoticesScreen> {
           description: descriptionController.text.trim(),
           category: selectedCategory,
         );
-        await _noticeService.updateNotice(updatedNotice);
+        await _noticeService.updateNotice(notice: updatedNotice);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -946,7 +941,7 @@ class _ApproveNoticesScreenState extends State<ApproveNoticesScreen> {
               children: [
                 Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 8),
-                const Text('Failed to update notice'),
+                Expanded(child: Text('Failed to re-approve notice: $e')),
               ],
             ),
             backgroundColor: Colors.red,
@@ -1026,12 +1021,14 @@ class _ApproveNoticesScreenState extends State<ApproveNoticesScreen> {
             children: [
               Icon(Icons.error, color: Colors.white),
               const SizedBox(width: 8),
-              const Text('Failed to delete notice'),
+              Expanded(child: Text('Failed to delete notice: $e')),
             ],
           ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       );
     }

@@ -1,7 +1,10 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 class LocalStorage {
   static SharedPreferences? _prefs;
+  static const String _deviceIdKey = 'deviceId';
+  static final Uuid _uuid = Uuid();
 
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -17,6 +20,7 @@ class LocalStorage {
   static const String keyIsProfileSetup = 'isProfileSetup';
   static const String keyNotificationsEnabled = 'notificationsEnabled';
   static const String keyNotificationSoundEnabled = 'notificationSoundEnabled';
+  static const String keyProfileImage = 'profileImage';
 
   // First launch check
   static bool get isFirstLaunch => _prefs?.getBool(keyIsFirstLaunch) ?? true;
@@ -40,6 +44,12 @@ class LocalStorage {
       _prefs?.getBool(keyNotificationSoundEnabled) ?? true;
   static Future<void> setNotificationSoundEnabled(bool value) async {
     await _prefs?.setBool(keyNotificationSoundEnabled, value);
+  }
+
+  // Profile Image (base64 encoded)
+  static String get profileImage => _prefs?.getString(keyProfileImage) ?? '';
+  static Future<void> setProfileImage(String base64) async {
+    await _prefs?.setString(keyProfileImage, base64);
   }
 
   // Profile Data
@@ -68,6 +78,29 @@ class LocalStorage {
   static bool get isProfileSetup => _prefs?.getBool(keyIsProfileSetup) ?? false;
   static Future<void> setProfileSetup(bool value) async {
     await _prefs?.setBool(keyIsProfileSetup, value);
+  }
+
+  // Save student profile
+  static Future<void> saveStudentProfile({
+    required String name,
+    required String department,
+    required String year,
+  }) async {
+    await setUserName(name);
+    await setUserDepartment(department);
+    await setUserYear(year);
+    await setProfileSetup(true);
+  }
+
+  // Device identifier for anonymous likes
+  static Future<String> getDeviceId() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    var deviceId = _prefs?.getString(_deviceIdKey);
+    if (deviceId == null || deviceId.isEmpty) {
+      deviceId = _uuid.v4();
+      await _prefs?.setString(_deviceIdKey, deviceId);
+    }
+    return deviceId;
   }
 
   // Clear all data

@@ -3,6 +3,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_strings.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
+import '../../shared_preferences/local_storage.dart';
 import '../student/student_home.dart';
 import '../admin/admin_dashboard.dart';
 import '../super_admin/super_admin_dashboard.dart';
@@ -52,6 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (!mounted) return;
+      await LocalStorage.setUserRole(user.role.name);
       _navigateToHome(user);
     } catch (e) {
       _showError(e.toString());

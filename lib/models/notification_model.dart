@@ -142,7 +142,6 @@ class NotificationModel {
       case NotificationType.systemActivity:
         return Icons.auto_awesome_motion;
       case NotificationType.unknown:
-      default:
         return Icons.notifications;
     }
   }
@@ -168,7 +167,6 @@ class NotificationModel {
       case NotificationType.systemActivity:
         return const Color(0xFF5E35B1);
       case NotificationType.unknown:
-      default:
         return const Color(0xFF424242);
     }
   }

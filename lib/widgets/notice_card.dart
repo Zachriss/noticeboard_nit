@@ -1,42 +1,86 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
 import '../models/notice_model.dart';
+import '../services/like_service.dart';
 
-class NoticeCard extends StatelessWidget {
+class NoticeCard extends StatefulWidget {
   final NoticeModel notice;
-  final VoidCallback? onLikePressed;
   final VoidCallback? onTap;
-  final VoidCallback? onLike;
   final bool showActions;
 
   const NoticeCard({
     super.key,
     required this.notice,
-    this.onLikePressed,
     this.onTap,
-    this.onLike,
     this.showActions = true,
   });
+
+  @override
+  State<NoticeCard> createState() => _NoticeCardState();
+}
+
+class _NoticeCardState extends State<NoticeCard> {
+  final LikeService _likeService = LikeService();
+  bool _isLiked = false;
+  bool _isLoadingLike = false;
+
+  Future<void> _loadLikeStatus() async {
+    try {
+      final liked = await _likeService.isLiked(widget.notice.id);
+      if (!mounted) return;
+      setState(() {
+        _isLiked = liked;
+      });
+    } catch (_) {
+      // No-op: if like state fails to load, keep default value.
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    if (_isLoadingLike) return;
+
+    setState(() {
+      _isLoadingLike = true;
+    });
+
+    try {
+      final liked = await _likeService.toggleLike(widget.notice.id);
+      if (!mounted) return;
+      setState(() {
+        _isLiked = liked;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not update like: $e')));
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingLike = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
         borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (notice.imageUrl != null)
+            if (widget.notice.hasFile)
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
                 child: Image.network(
-                  notice.imageUrl!,
+                  widget.notice.imageUrl!,
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -50,15 +94,20 @@ class NoticeCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: _getCategoryColor(notice.category).withOpacity(0.1),
+                          color: _getCategoryColor(
+                            widget.notice.category,
+                          ).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          notice.category,
+                          widget.notice.category,
                           style: TextStyle(
-                            color: _getCategoryColor(notice.category),
+                            color: _getCategoryColor(widget.notice.category),
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
@@ -66,17 +115,14 @@ class NoticeCard extends StatelessWidget {
                       ),
                       const Spacer(),
                       Text(
-                        notice.formattedDate,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
+                        widget.notice.formattedDate,
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    notice.title,
+                    widget.notice.title,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -86,32 +132,44 @@ class NoticeCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    notice.description,
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontSize: 14,
-                    ),
+                    widget.notice.description,
+                    style: TextStyle(color: Colors.grey[700], fontSize: 14),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      IconButton(
-                        onPressed: onLikePressed,
-                        icon: Icon(
-                          notice.isLiked ? Icons.favorite : Icons.favorite_border,
-                          color: notice.isLiked ? AppTheme.secondaryColor : Colors.grey[600],
+                      if (widget.showActions)
+                        IconButton(
+                          onPressed: _isLoadingLike ? null : _toggleLike,
+                          icon: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 250),
+                            transitionBuilder: (child, animation) =>
+                                ScaleTransition(scale: animation, child: child),
+                            child: Icon(
+                              _isLiked ? Icons.favorite : Icons.favorite_border,
+                              key: ValueKey<bool>(_isLiked),
+                              color: _isLiked ? Colors.red : Colors.grey[600],
+                            ),
+                          ),
+                          visualDensity: VisualDensity.compact,
                         ),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      Text(
-                        '${notice.likesCount}',
-                        style: TextStyle(color: Colors.grey[600]),
+                      StreamBuilder<int>(
+                        stream: _likeService.likesCountStream(widget.notice.id),
+                        initialData: widget.notice.likesCount,
+                        builder: (context, snapshot) {
+                          final likesCount =
+                              snapshot.data ?? widget.notice.likesCount;
+                          return Text(
+                            '$likesCount',
+                            style: TextStyle(color: Colors.grey[600]),
+                          );
+                        },
                       ),
                       const Spacer(),
                       Text(
-                        'Posted by ${notice.authorName}',
+                        'Posted by ${widget.notice.authorName}',
                         style: TextStyle(
                           color: Colors.grey[500],
                           fontSize: 12,

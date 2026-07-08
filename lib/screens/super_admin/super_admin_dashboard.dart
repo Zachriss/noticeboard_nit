@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../shared_preferences/local_storage.dart';
 import '../../services/notice_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/notice_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/notification_provider.dart';
 import '../../widgets/notification_badge.dart';
-import '../auth/login_screen.dart';
+import '../student/student_home.dart';
 import 'approve_notices_screen.dart';
 import 'profile_screen.dart';
 import 'categories_screen.dart';
@@ -404,10 +405,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
   Future<void> _logout() async {
     await _authService.logout();
+    await LocalStorage.setUserRole('student');
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
       (route) => false,
     );
   }

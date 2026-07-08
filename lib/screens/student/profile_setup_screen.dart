@@ -1,10 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared_preferences/local_storage.dart';
+import '../../services/student_auth_service.dart';
 import '../student/student_home.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({super.key});
+  final bool isEditMode;
+
+  const ProfileSetupScreen({super.key, this.isEditMode = false});
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -17,24 +22,88 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   String? _selectedDepartment;
   String? _selectedYear;
   bool _isLoading = false;
+  String? _profileImageBase64;
+  final ImagePicker _picker = ImagePicker();
 
   final List<String> _departments = [
-    'Computer Science & Engineering',
+    'Computer Science',
     'Information Technology',
-    'Electronics & Communication',
+    'Electronics & Telecommunication Engineering',
     'Electrical Engineering',
     'Mechanical Engineering',
-    'Civil Engineering',
-    'Chemical Engineering',
+    'Civil & Railway Engineering',
+    'Automobile Engineering',
+    'Naval Architecture and Marine Engineering',
+    'Logistics and Transport Management',
+    'Road and Railway Transport Logistics Management',
+    'Shipping and Ports Logistics Management',
+    'Bussines Adminstration',
+    'Procurement and Logistics Management',
+    'Marketing and Public Relation',
+    'Accounting and Transport Finance',
+    'Pipework, Oil and Gas Engineering',
+    'Shipbuilding and Repair',
+    'Freight Clearing and Forwarding',
+    'Library Information Studies',
+    'Record Archieves and Information Management',
+
   ];
 
   final List<String> _years = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isEditMode) {
+      // Pre-fill fields from existing LocalStorage data
+      _nameController.text = LocalStorage.userName;
+      _phoneController.text = LocalStorage.userPhone;
+      _selectedDepartment = LocalStorage.userDepartment.isNotEmpty
+          ? LocalStorage.userDepartment
+          : null;
+      _selectedYear = LocalStorage.userYear.isNotEmpty
+          ? LocalStorage.userYear
+          : null;
+      // Load existing profile image if any
+      if (LocalStorage.profileImage.isNotEmpty) {
+        _profileImageBase64 = LocalStorage.profileImage;
+      }
+    }
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        final base64String = base64Encode(bytes);
+        setState(() {
+          _profileImageBase64 = base64String;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick image: $e'),
+            backgroundColor: AppTheme.secondaryColor,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -52,6 +121,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     setState(() => _isLoading = true);
 
     try {
+      if (!widget.isEditMode) {
+        // Only sign in anonymously on first-time setup
+        final studentAuth = StudentAuthService();
+        await studentAuth.signInAnonymously();
+      }
+
       await LocalStorage.setUserName(_nameController.text.trim());
       await LocalStorage.setUserDepartment(_selectedDepartment!);
       await LocalStorage.setUserYear(_selectedYear!);
@@ -59,11 +134,29 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       await LocalStorage.setProfileSetup(true);
       await LocalStorage.setUserRole('student');
 
+      // Save profile image (base64) if one was selected
+      if (_profileImageBase64 != null && _profileImageBase64!.isNotEmpty) {
+        await LocalStorage.setProfileImage(_profileImageBase64!);
+      }
+
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
-      );
+
+      if (widget.isEditMode) {
+        // In edit mode, just go back to the previous screen
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // First-time setup, navigate to home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -80,7 +173,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile Setup'),
+        title: Text(widget.isEditMode ? 'Edit Profile' : 'Profile Setup'),
         backgroundColor: AppTheme.primaryColor,
       ),
       body: SingleChildScrollView(
@@ -90,16 +183,72 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
-              const Icon(
-                Icons.person_add,
-                size: 80,
-                color: AppTheme.primaryColor,
+              // Profile Photo
+              GestureDetector(
+                onTap: _pickImage,
+                child: Center(
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: AppTheme.primaryColor,
+                        backgroundImage: _profileImageBase64 != null
+                            ? MemoryImage(
+                                base64Decode(_profileImageBase64!),
+                              ) as ImageProvider
+                            : null,
+                        child: _profileImageBase64 == null
+                            ? Text(
+                                _nameController.text.isNotEmpty
+                                    ? _nameController.text[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                  fontSize: 40,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.photo_library, size: 18),
+                  label: Text(
+                    _profileImageBase64 != null
+                        ? 'Change Photo'
+                        : 'Upload Photo',
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Welcome to NIT Notice Board',
-                style: TextStyle(
+              Text(
+                widget.isEditMode
+                    ? 'Edit Your Profile'
+                    : 'Welcome to NIT Notice Board',
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimary,
@@ -108,7 +257,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Please set up your profile to continue',
+                widget.isEditMode
+                    ? 'Update your details below'
+                    : 'Please set up your profile to continue',
                 style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
                 textAlign: TextAlign.center,
               ),
@@ -123,6 +274,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   prefixIcon: Icon(Icons.person_outline),
                   border: OutlineInputBorder(),
                 ),
+                onChanged: (_) => setState(() {}), // Refresh avatar initials
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter your name';
@@ -136,7 +288,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               DropdownButtonFormField<String>(
                 initialValue: _selectedDepartment,
                 decoration: const InputDecoration(
-                  labelText: 'Department',
+                  labelText: 'Programs',
                   prefixIcon: Icon(Icons.school_outlined),
                   border: OutlineInputBorder(),
                 ),
@@ -211,9 +363,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           valueColor: AlwaysStoppedAnimation(Colors.white),
                         ),
                       )
-                    : const Text(
-                        'Save Profile',
-                        style: TextStyle(
+                    : Text(
+                        widget.isEditMode ? 'Update Profile' : 'Save Profile',
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),

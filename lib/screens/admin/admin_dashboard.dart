@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
@@ -6,12 +7,15 @@ import '../../services/auth_service.dart';
 import '../../models/notice_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/notification_provider.dart';
+import '../../shared_preferences/local_storage.dart';
 import '../../widgets/notification_badge.dart';
 import '../../widgets/notice_card.dart';
-import '../auth/login_screen.dart';
 import '../notifications/notification_screen.dart';
+import '../student/student_home.dart';
+import '../super_admin/profile_screen.dart';
 import 'create_notice_screen.dart';
 import 'manage_notices_screen.dart';
+import 'feedback_list_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -29,7 +33,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int _totalNotices = 0;
   int _pendingNotices = 0;
   int _totalLikes = 0;
-  int _totalStudents = 0;
+  int _totalUsers = 0;
   int _totalFeedback = 0;
   bool _isLoadingStats = true;
 
@@ -62,28 +66,45 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Future<void> _loadStatistics(String userId) async {
+    if (!mounted) return;
+
+    // Load each stat independently so one failure doesn't break all counts
+    int totalNotices = 0;
+    int pendingNotices = 0;
+    int totalLikes = 0;
+    int totalUsers = 0;
+    int totalFeedback = 0;
+
     try {
-      final results = await Future.wait([
-        _noticeService.getTotalNoticesByAuthor(userId),
-        _noticeService.getPendingNoticesByAuthor(userId),
-        _noticeService.getTotalLikesByAuthor(userId),
-        _noticeService.getTotalStudentsCount(),
-        _noticeService.getTotalFeedbackCount(),
-      ]);
+      totalNotices = await _noticeService.getAllNoticesCount();
+    } catch (_) {}
 
-      if (!mounted) return;
+    try {
+      pendingNotices = await _noticeService.getAllPendingNoticesCount();
+    } catch (_) {}
 
-      setState(() {
-        _totalNotices = results[0];
-        _pendingNotices = results[1];
-        _totalLikes = results[2];
-        _totalStudents = results[3];
-        _totalFeedback = results[4];
-        _isLoadingStats = false;
-      });
-    } catch (e) {
-      if (mounted) setState(() => _isLoadingStats = false);
-    }
+    try {
+      totalLikes = await _noticeService.getAllLikesCount();
+    } catch (_) {}
+
+    try {
+      totalUsers = await _noticeService.getAllUsersCount();
+    } catch (_) {}
+
+    try {
+      totalFeedback = await _noticeService.getTotalFeedbackCount();
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    setState(() {
+      _totalNotices = totalNotices;
+      _pendingNotices = pendingNotices;
+      _totalLikes = totalLikes;
+      _totalUsers = totalUsers;
+      _totalFeedback = totalFeedback;
+      _isLoadingStats = false;
+    });
   }
 
   @override
@@ -122,22 +143,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
             },
           ),
           GestureDetector(
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SuperAdminProfileScreen(),
+                ),
+              );
+            },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: CircleAvatar(
                 radius: 16,
                 backgroundColor: Colors.white,
-                child: Text(
-                  _user?.name.isNotEmpty == true
-                      ? _user!.name[0].toUpperCase()
-                      : 'A',
-                  style: const TextStyle(
-                    color: AppTheme.primaryColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                backgroundImage: LocalStorage.profileImage.isNotEmpty
+                    ? MemoryImage(base64Decode(LocalStorage.profileImage))
+                        as ImageProvider
+                    : null,
+                child: LocalStorage.profileImage.isEmpty
+                    ? Text(
+                        _user?.name.isNotEmpty == true
+                            ? _user!.name[0].toUpperCase()
+                            : 'A',
+                        style: const TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
               ),
             ),
           ),
@@ -155,25 +189,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ],
             onSelected: (value) {
-              if (value == 'logout') _logout();
+              if (value == 'profile') {
+                setState(() => _currentIndex = 3);
+              } else if (value == 'logout') {
+                _logout();
+              }
             },
           ),
         ],
       ),
       body: IndexedStack(
         index: _currentIndex,
-        children: [_buildHomeTab(), const ManageNoticesScreen()],
+        children: [
+          _buildHomeTab(),
+          const ManageNoticesScreen(),
+          const AdminFeedbackScreen(),
+          const SuperAdminProfileScreen(),
+        ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CreateNoticeScreen()),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Create Notice'),
-      ),
+      floatingActionButton: _currentIndex == 1
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateNoticeScreen()),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Create Notice'),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
@@ -206,16 +251,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: AppTheme.primaryColor,
-                    child: Text(
-                      _user?.name.isNotEmpty == true
-                          ? _user!.name[0].toUpperCase()
-                          : 'A',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    backgroundImage: LocalStorage.profileImage.isNotEmpty
+                        ? MemoryImage(base64Decode(LocalStorage.profileImage))
+                            as ImageProvider
+                        : null,
+                    child: LocalStorage.profileImage.isEmpty
+                        ? Text(
+                            _user?.name.isNotEmpty == true
+                                ? _user!.name[0].toUpperCase()
+                                : 'A',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -283,8 +334,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
-                  _isLoadingStats ? '-' : '$_totalStudents',
-                  'Students',
+                  _isLoadingStats ? '-' : '$_totalUsers',
+                  'Users',
                   Icons.people,
                   Colors.purple,
                 ),
@@ -390,10 +441,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _logout() async {
     await _authService.logout();
+    // Preserve student profile data; restore student role so splash routes to student home
+    await LocalStorage.setUserRole('student');
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
       (route) => false,
     );
   }

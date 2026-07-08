@@ -16,7 +16,8 @@ class UserProvider extends ChangeNotifier {
   Future<void> loadAllUsers() async {
     _setLoading(true);
     try {
-      _users = _authService.getAllUsers();
+      final stream = _authService.getAllUsers();
+      _users = await stream.first;
       _errorMessage = null;
     } catch (e) {
       _errorMessage = e.toString();
@@ -29,13 +30,15 @@ class UserProvider extends ChangeNotifier {
   Future<void> loadAdmins() async {
     _setLoading(true);
     try {
-      _users = await _authService.getUsersByRole(UserRole.admin);
+      final stream = _authService.getUsersByRole(UserRole.admin);
+      _users = await stream.first;
       _errorMessage = null;
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
       _setLoading(false);
     }
+    notifyListeners();
   }
 
   Future<void> approveAdmin(String userId) async {

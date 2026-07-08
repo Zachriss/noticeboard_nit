@@ -1,44 +1,181 @@
-✅ Copy these rules to your Firebase Console -> Firestore Database -> Rules:
-
-```rules
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // ✅ Public read access for all approved notices
-    match /notices/{noticeId} {
-      allow read: if resource.data.status == 'approved';
-      
-      // ✅ Allow ANYONE to like/unlike notices (no login required)
-      // ✅ Only allow modifying likesCount and likedBy fields
-      allow update: if request.resource.data.keys().hasOnly(['likesCount', 'likedBy'])
-        && request.resource.data.likesCount is number
-        && request.resource.data.likedBy is list;
-      
-      // Admin write permissions
-      allow write: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super_admin']);
+
+    // ========================
+    // HELPERS
+    // ========================
+
+    function signedIn() {
+      return request.auth != null;
     }
-    
-    // Keep your existing rules for other collections below:
+
+    function userDoc() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      );
+    }
+
+    function userExists() {
+      return exists(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      );
+    }
+
+    function myRole() {
+      // Safely get role, default to empty string if document or field missing
+      return userDoc().data.role;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        userExists() &&
+        myRole() in ['admin', 'superAdmin'];
+    }
+
+    function isSuperAdmin() {
+      return signedIn() &&
+        userExists() &&
+        myRole() == 'superAdmin';
+    }
+
+    function isStudent() {
+      // Anonymous auth users are students if they have no user doc
+      // OR if their user doc has role == 'student'
+      return signedIn() && (
+        !userExists() ||
+        myRole() == 'student'
+      );
+    }
+
+    function noticeOwner(noticeId) {
+      // Check if the authenticated user is the author of the notice
+      // The field in Firestore is 'authorId' (matching the NoticeModel)
+      return get(/databases/$(database)/documents/notices/$(noticeId)).data.authorId == request.auth.uid;
+    }
+
+    // ========================
+    // USERS
+    // ========================
+
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && (
+          request.auth.uid == userId ||
+          isSuperAdmin()
+        );
+
+      allow update: if signedIn()
+        && (
+          request.auth.uid == userId ||
+          isAdmin()
+        );
+
+      allow delete: if isSuperAdmin();
     }
-    
-    match /categories/{categoryId} {
+
+    // ========================
+    // NOTICES
+    // ========================
+
+    match /notices/{noticeId} {
+
+      // Anyone can read approved notices.
+      // isAdmin() handles safety for user doc existence.
+      allow read: if resource.data.status == 'approved'
+        || isAdmin()
+        || isStudent();
+
+      // Only admins create notices
+      allow create: if isAdmin();
+
+      // Super admin can update ANY notice (approve, unapprove, reject, edit)
+      // Notice owner (admin who created it) can also update
+      allow update: if signedIn()
+        && (
+          isSuperAdmin() ||
+          (resource.data.authorId == request.auth.uid)
+        );
+
+      // Only super admin can delete notices
+      allow delete: if isSuperAdmin();
+    }
+
+    // ========================
+    // LIKES (Student UID-based for Anonymous Auth)
+    // ========================
+
+    match /likes/{likeId} {
+
+      // Only authenticated users can read likes
+      allow read: if signedIn();
+
+      // Create a like - studentUid must match the authenticated user's UID
+      // Anonymous users have auth.uid set by Firebase, so this works.
+      allow create: if signedIn()
+        && request.resource.data.noticeId is string
+        && request.resource.data.studentUid == request.auth.uid
+        && request.resource.data.createdAt is timestamp;
+
+      // Delete a like - must own the like (studentUid matches)
+      allow delete: if signedIn()
+        && resource.data.studentUid == request.auth.uid;
+
+      // No updates allowed (toggle = create + delete)
+      allow update: if false;
+    }
+
+    // ========================
+    // FEEDBACK
+    // ========================
+
+    match /feedback/{feedbackId} {
+
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow read: if signedIn()
+        && (
+          resource.data.userId == request.auth.uid ||
+          isAdmin()
+        );
+
+      allow update: if isAdmin();
+
+      allow delete: if signedIn()
+        && (
+          resource.data.userId == request.auth.uid ||
+          isSuperAdmin()
+        );
+    }
+
+    // ========================
+    // FAQS
+    // ========================
+
+    match /faqs/{faqId} {
+
       allow read: if true;
-      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
+
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ========================
+    // NOTIFICATIONS
+    // ========================
+
+    match /notifications/{notificationId} {
+
+      allow read: if signedIn();
+
+      // Super admin can create notifications too (for notification system actions)
+      allow create: if isSuperAdmin() || isAdmin();
+
+      allow update, delete: if isSuperAdmin();
     }
   }
 }
-```
-
-🔹 **What these rules do:**
-✅ Anyone can view approved notices
-✅ ANYONE can like notices WITHOUT LOGIN
-✅ Users can ONLY modify like fields - cannot edit other notice data
-✅ Prevents cheating with atomic validation
-✅ Admins still have full access
-✅ All existing permissions remain intact
-
-After pasting these rules, the PERMISSION_DENIED errors will be gone permanently.

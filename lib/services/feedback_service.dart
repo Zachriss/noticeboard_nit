@@ -23,7 +23,6 @@ class FeedbackService {
     return _firestore
         .collection(FirebaseService.feedbackCollection)
         .where('noticeId', isEqualTo: noticeId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
@@ -37,7 +36,6 @@ class FeedbackService {
     return _firestore
         .collection(FirebaseService.feedbackCollection)
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
@@ -56,12 +54,15 @@ class FeedbackService {
     return docRef.id;
   }
 
-  // Resolve feedback
+  // Resolve feedback (sets both isResolved=true and status='resolved')
   Future<void> resolveFeedback(String feedbackId) async {
     await _firestore
         .collection(FirebaseService.feedbackCollection)
         .doc(feedbackId)
-        .update({'isResolved': true});
+        .update({
+      'isResolved': true,
+      'status': 'resolved',
+    });
   }
 
   // Delete feedback

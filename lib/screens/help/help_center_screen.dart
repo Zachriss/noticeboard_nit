@@ -126,6 +126,7 @@ class HelpCenterScreen extends StatelessWidget {
     );
   }
 
+
   Widget _buildHelpCategory({
     required IconData icon,
     required String title,

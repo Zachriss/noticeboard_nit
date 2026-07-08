@@ -11,7 +11,7 @@ import '../screens/admin/create_notice_screen.dart';
 import '../screens/admin/manage_notices_screen.dart';
 import '../screens/admin/view_feedback_screen.dart';
 import '../screens/super_admin/super_admin_dashboard.dart';
-import '../screens/super_admin/manage_admins_screen.dart';
+import '../screens/super_admin/users_management_screen.dart';
 import '../screens/super_admin/approve_notices_screen.dart';
 import '../screens/notifications/notification_screen.dart';
 
@@ -64,7 +64,7 @@ class AppRoutes {
       case superAdminDashboard:
         return MaterialPageRoute(builder: (_) => const SuperAdminDashboard());
       case manageAdmins:
-        return MaterialPageRoute(builder: (_) => const ManageAdminsScreen());
+        return MaterialPageRoute(builder: (_) => const UsersManagementScreen());
       case approveNotices:
         return MaterialPageRoute(builder: (_) => const ApproveNoticesScreen());
       default:

@@ -13,22 +13,22 @@ class _FaqScreenState extends State<FaqScreen> {
     {
       'question': 'How do I view notices?',
       'answer':
-          'Notices are displayed on the Home and Notices tabs. You can search and filter notices by category.',
+          'Notices are displayed on the Home and Favourite tabs. You can search and filter notices by category.',
     },
     {
       'question': 'How do I like a notice?',
       'answer':
-          'Tap on the heart icon on any notice card to like or unlike it.',
+          'Tap on the heart icon on any notice card to like or unlike it. Liked notices will appear in the Favourites tab.',
     },
     {
       'question': 'How can I submit feedback?',
       'answer':
-          'Go to the Feedback tab, enter your feedback in the text field, and tap Submit.',
+          'Go to the Feedback tab, enter your feedback title and description, and tap Submit.',
     },
     {
       'question': 'How do I update my profile?',
       'answer':
-          'Tap on your profile avatar in the top right of the Home screen to access profile options.',
+          'Tap on your profile avatar in the top right of the screen to access profile options.',
     },
     {
       'question': 'Who can post notices?',
@@ -43,54 +43,58 @@ class _FaqScreenState extends State<FaqScreen> {
     {
       'question': 'Is my data secure?',
       'answer':
-          'Yes, your profile data is stored locally on your device using secure local storage.',
+          'Yes, your profile data is stored securely. Your likes and feedback are stored in our database.',
     },
     {
       'question': 'How do I logout?',
       'answer':
           'Tap on your profile avatar and select Logout from the menu options.',
     },
+    {
+      'question': 'Can I search for specific events?',
+      'answer':
+          'Yes, go to the Events tab where you can search for events and filter them by category.',
+    },
+    {
+      'question': 'How do I know if an event is happening soon?',
+      'answer':
+          'Events happening within 3 days are marked with a "Soon" badge to help you plan ahead.',
+    },
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('FAQs'),
-        backgroundColor: AppTheme.primaryColor,
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _faqs.length,
-        itemBuilder: (context, index) {
-          final faq = _faqs[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
-              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              iconColor: AppTheme.primaryColor,
-              collapsedIconColor: Colors.grey,
-              title: Text(
-                faq['question']!,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
-              children: [
-                Text(
-                  faq['answer']!,
-                  style: TextStyle(color: Colors.grey.shade700, height: 1.5),
-                ),
-              ],
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _faqs.length,
+      itemBuilder: (context, index) {
+        final faq = _faqs[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
             ),
-          );
-        },
-      ),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            iconColor: AppTheme.primaryColor,
+            collapsedIconColor: Colors.grey,
+            title: Text(
+              faq['question']!,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+            children: [
+              Text(
+                faq['answer']!,
+                style: TextStyle(color: Colors.grey.shade700, height: 1.5),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

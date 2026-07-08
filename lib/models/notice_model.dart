@@ -16,7 +16,6 @@ class NoticeModel {
   final String? rejectionReason;
   final int likesCount;
   final List<String> tags;
-  final bool isLiked;
 
   NoticeModel({
     required this.id,
@@ -32,7 +31,6 @@ class NoticeModel {
     this.rejectionReason,
     this.likesCount = 0,
     this.tags = const [],
-    this.isLiked = false,
   });
 
   factory NoticeModel.fromMap(Map<String, dynamic> map, String id) {
@@ -43,7 +41,7 @@ class NoticeModel {
       category: map['category'] ?? 'General',
       authorId: map['authorId'] ?? '',
       authorName: map['authorName'] ?? '',
-      imageUrl: map['imageUrl'],
+      imageUrl: map['imageUrl'] ?? map['fileUrl'],
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate(),
       status: NoticeStatus.values.firstWhere(
@@ -51,9 +49,14 @@ class NoticeModel {
         orElse: () => NoticeStatus.pending,
       ),
       rejectionReason: map['rejectionReason'],
-      likesCount: map['likesCount'] ?? 0,
+      likesCount: map['likesCount'] is int
+          ? map['likesCount'] as int
+          : map['likesCount'] is double
+              ? (map['likesCount'] as double).toInt()
+              : map['likesCount'] is String
+                  ? int.tryParse(map['likesCount'] as String) ?? 0
+                  : 0,
       tags: List<String>.from(map['tags'] ?? []),
-      isLiked: map['isLiked'] ?? false,
     );
   }
 
@@ -71,7 +74,6 @@ class NoticeModel {
       'rejectionReason': rejectionReason,
       'likesCount': likesCount,
       'tags': tags,
-      'isLiked': isLiked,
     };
   }
 
@@ -89,7 +91,6 @@ class NoticeModel {
     String? rejectionReason,
     int? likesCount,
     List<String>? tags,
-    bool? isLiked,
   }) {
     return NoticeModel(
       id: id ?? this.id,
@@ -105,7 +106,6 @@ class NoticeModel {
       rejectionReason: rejectionReason ?? this.rejectionReason,
       likesCount: likesCount ?? this.likesCount,
       tags: tags ?? this.tags,
-      isLiked: isLiked ?? this.isLiked,
     );
   }
 
@@ -121,4 +121,6 @@ class NoticeModel {
       return 'Just now';
     }
   }
+
+  bool get hasFile => imageUrl != null && imageUrl!.isNotEmpty;
 }

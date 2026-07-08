@@ -44,7 +44,13 @@ class FAQModel {
       answer: map['answer'] ?? '',
       category: map['category'] ?? 'General',
       isActive: map['isActive'] ?? true,
-      order: map['order'] ?? 0,
+      order: map['order'] is int
+          ? map['order'] as int
+          : map['order'] is double
+              ? (map['order'] as double).toInt()
+              : map['order'] is String
+                  ? int.tryParse(map['order'] as String) ?? 0
+                  : 0,
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       updatedAt: map['updatedAt'] != null ? (map['updatedAt'] as Timestamp).toDate() : null,
       createdBy: map['createdBy'],

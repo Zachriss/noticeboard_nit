@@ -3,7 +3,6 @@ import '../../core/theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
 import '../auth/login_screen.dart';
-import 'student_home.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -227,7 +226,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
   }

@@ -15,12 +15,13 @@ class NoticeProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  Stream<List<NoticeModel>> get noticesStream => _noticeService.getNoticesStream();
+  Stream<List<NoticeModel>> get noticesStream => _noticeService.getAllNotices();
 
   Future<void> loadNotices() async {
     _setLoading(true);
     try {
-      _notices = _noticeService.getAllNotices();
+      final stream = _noticeService.getAllNotices();
+      _notices = await stream.first;
       _errorMessage = null;
     } catch (e) {
       _errorMessage = e.toString();
@@ -30,10 +31,18 @@ class NoticeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createNotice(NoticeModel notice) async {
+  Future<void> createNotice({
+    required NoticeModel notice,
+    String? imagePath,
+    List<int>? imageBytes,
+  }) async {
     _setLoading(true);
     try {
-      await _noticeService.createNotice(notice);
+      await _noticeService.createNotice(
+        notice: notice,
+        imagePath: imagePath,
+        imageBytes: imageBytes,
+      );
       await loadNotices();
     } catch (e) {
       _errorMessage = e.toString();
@@ -42,10 +51,20 @@ class NoticeProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateNotice(NoticeModel notice) async {
+  Future<void> updateNotice({
+    required NoticeModel notice,
+    String? imagePath,
+    List<int>? imageBytes,
+    bool removeImage = false,
+  }) async {
     _setLoading(true);
     try {
-      await _noticeService.updateNotice(notice);
+      await _noticeService.updateNotice(
+        notice: notice,
+        imagePath: imagePath,
+        imageBytes: imageBytes,
+        removeImage: removeImage,
+      );
       await loadNotices();
     } catch (e) {
       _errorMessage = e.toString();
@@ -66,17 +85,15 @@ class NoticeProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> toggleLike(String noticeId) async {
+  Future<bool> toggleLike(String noticeId) async {
     try {
-      // Allow liking without login - anonymous likes
-      await _noticeService.incrementLikeCount(noticeId);
-      
-      // Refresh notices list
-      await loadNotices();
+      final result = await _likeService.toggleLike(noticeId);
       notifyListeners();
+      return result;
     } catch (e) {
       _errorMessage = e.toString();
       notifyListeners();
+      return false;
     }
   }
 

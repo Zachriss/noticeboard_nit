@@ -1,21 +1,23 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/notice_model.dart';
-import '../../models/user_model.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/bottom_navigation_provider.dart';
 import '../../widgets/notification_badge.dart';
 import '../../widgets/notice_card.dart';
 import '../../shared_preferences/local_storage.dart';
 import '../../services/notice_service.dart';
-import '../../services/like_service.dart';
 import '../../services/auth_service.dart';
 import '../notifications/notification_screen.dart';
 import 'notice_details_screen.dart';
-import 'profile_screen.dart';
+import 'profile_setup_screen.dart';
+import 'favourite_screen.dart';
 import 'feedback_screen.dart';
 import 'faq_screen.dart';
 import '../auth/login_screen.dart';
+import '../../services/student_auth_service.dart';
 import '../about/about_screen.dart';
 import '../help/help_center_screen.dart';
 import '../settings/settings_screen.dart';
@@ -29,14 +31,11 @@ class StudentHomeScreen extends StatefulWidget {
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   final NoticeService _noticeService = NoticeService();
-  final LikeService _likeService = LikeService();
   final AuthService _authService = AuthService();
 
   String _searchText = '';
   String? _selectedCategory;
-  int _currentIndex = 0;
   final TextEditingController _searchController = TextEditingController();
-  UserModel? _currentUser;
 
   final List<String> _categories = [
     'All',
@@ -53,11 +52,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   Future<void> _loadUserData() async {
+    // Ensure student is signed in with anonymous Firebase Auth
+    try {
+      final studentAuth = StudentAuthService();
+      await studentAuth.signInAnonymously();
+    } catch (e) {
+      debugPrint('Student anonymous auth failed: $e');
+    }
+
     final firebaseUser = _authService.currentUser;
     if (firebaseUser != null) {
-      final user = await _authService.getUserData(firebaseUser.uid);
       if (mounted) {
-        setState(() => _currentUser = user);
         context.read<NotificationProvider>().initialize(
           userId: firebaseUser.uid,
           role: 'student',
@@ -74,35 +79,43 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildHomeTab(),
-          _buildNoticesTab(),
-          const FeedbackScreen(),
-          const FaqScreen(),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Notices',
+    return ChangeNotifierProvider(
+      create: (_) => BottomNavigationProvider(),
+      child: Scaffold(
+        appBar: _buildAppBar(),
+        body: Consumer<BottomNavigationProvider>(
+          builder: (context, provider, _) => IndexedStack(
+            index: provider.currentIndex,
+            children: [
+              _buildHomeTab(),
+              const FavouriteScreen(),
+              const FeedbackScreen(),
+              const FaqScreen(),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.feedback),
-            label: 'Feedback',
+        ),
+        bottomNavigationBar: Consumer<BottomNavigationProvider>(
+          builder: (context, provider, _) => BottomNavigationBar(
+            currentIndex: provider.currentIndex,
+            onTap: (index) =>
+                context.read<BottomNavigationProvider>().setIndex(index),
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: AppTheme.primaryColor,
+            unselectedItemColor: Colors.grey,
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.favorite),
+                label: 'Favourite',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.feedback),
+                label: 'Feedback',
+              ),
+              BottomNavigationBarItem(icon: Icon(Icons.help), label: 'FAQs'),
+            ],
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.help), label: 'FAQs'),
-        ],
+        ),
       ),
     );
   }
@@ -149,16 +162,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             child: CircleAvatar(
               radius: 16,
               backgroundColor: Colors.white,
-              child: Text(
-                LocalStorage.userName.isNotEmpty
-                    ? LocalStorage.userName[0].toUpperCase()
-                    : 'S',
-                style: const TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              backgroundImage: LocalStorage.profileImage.isNotEmpty
+                  ? MemoryImage(base64Decode(LocalStorage.profileImage))
+                      as ImageProvider
+                  : null,
+              child: LocalStorage.profileImage.isEmpty
+                  ? Text(
+                      LocalStorage.userName.isNotEmpty
+                          ? LocalStorage.userName[0].toUpperCase()
+                          : 'S',
+                      style: const TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
             ),
           ),
         ),
@@ -293,70 +312,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildNoticesTab() {
-    return Column(
-      children: [
-        // Search + Filter Header
-        Container(
-          color: AppTheme.primaryColor,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      onChanged: (value) => setState(() => _searchText = value),
-                      style: const TextStyle(color: Colors.black),
-                      decoration: InputDecoration(
-                        hintText: 'Search notices...',
-                        fillColor: Colors.white,
-                        filled: true,
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: Colors.grey,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedCategory ?? 'All',
-                        items: _categories.map((cat) {
-                          return DropdownMenuItem(value: cat, child: Text(cat));
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedCategory = value == 'All' ? null : value;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        Expanded(child: _buildNoticesList()),
-      ],
-    );
-  }
-
   Widget _buildNoticesList() {
     return StreamBuilder<List<NoticeModel>>(
       stream: _selectedCategory != null
@@ -428,24 +383,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   ),
                 );
               },
-              onLikePressed: () => _toggleLike(notice),
             );
           },
         );
       },
     );
-  }
-
-  Future<void> _toggleLike(NoticeModel notice) async {
-    try {
-      await _noticeService.incrementLikeCount(notice.id);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
   }
 
   void _showProfileMenu() {
@@ -462,16 +404,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             CircleAvatar(
               radius: 40,
               backgroundColor: AppTheme.primaryColor,
-              child: Text(
-                LocalStorage.userName.isNotEmpty
-                    ? LocalStorage.userName[0].toUpperCase()
-                    : 'S',
-                style: const TextStyle(
-                  fontSize: 32,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              backgroundImage: LocalStorage.profileImage.isNotEmpty
+                  ? MemoryImage(base64Decode(LocalStorage.profileImage))
+                      as ImageProvider
+                  : null,
+              child: LocalStorage.profileImage.isEmpty
+                  ? Text(
+                      LocalStorage.userName.isNotEmpty
+                          ? LocalStorage.userName[0].toUpperCase()
+                          : 'S',
+                      style: const TextStyle(
+                        fontSize: 32,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(height: 16),
             Text(
@@ -486,68 +434,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             ),
             const SizedBox(height: 24),
             ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('View Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                );
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.edit),
               title: const Text('Edit Profile'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const ProfileSetupScreen(isEditMode: true),
+                  ),
                 );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: AppTheme.secondaryColor),
-              title: const Text(
-                'Logout',
-                style: TextStyle(color: AppTheme.secondaryColor),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showLogoutDialog();
               },
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await LocalStorage.clearAll();
-              if (!mounted) return;
-              // Navigate to splash which will handle role-based routing
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.secondaryColor,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
       ),
     );
   }

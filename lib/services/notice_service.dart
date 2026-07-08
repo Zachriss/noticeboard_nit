@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/notice_model.dart';
 import '../models/notification_model.dart';
 import '../core/services/firebase_service.dart';
 import 'notification_service.dart';
+import 'cloudinary_service.dart';
 
 class NoticeService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -93,14 +96,40 @@ class NoticeService {
     }
   }
 
-  // Create notice
-  Future<String> createNotice(NoticeModel notice) async {
+  // Create notice with optional image upload
+  Future<String> createNotice({
+    required NoticeModel notice,
+    String? imagePath,
+    List<int>? imageBytes,
+  }) async {
+    String? imageUrl;
+
+    // Upload image to ImgBB if provided (optional - can be null)
+    if ((imagePath != null && imagePath.isNotEmpty) || (imageBytes != null && imageBytes.isNotEmpty)) {
+      try {
+        final uploadedUrl = await ImgBBService.safeUpload(
+          file: imagePath != null ? File(imagePath) : null,
+          bytes: imageBytes,
+          fileName: imagePath?.split('/').last,
+        );
+        if (uploadedUrl != null) {
+          imageUrl = uploadedUrl;
+        }
+      } catch (e) {
+        // Gracefully handle upload failure - continue without image
+        imageUrl = null;
+      }
+    }
+
+    final finalNotice = notice.copyWith(
+      imageUrl: imageUrl,
+    );
+
     final docRef = _firestore
         .collection(FirebaseService.noticesCollection)
-        .doc();
+        .doc(notice.id);
 
-    final noticeWithId = notice.copyWith(id: docRef.id);
-    await docRef.set(noticeWithId.toMap());
+    await docRef.set(finalNotice.toMap());
 
     await _notificationService.sendToRole(
       targetRole: 'superAdmin',
@@ -116,12 +145,49 @@ class NoticeService {
     return docRef.id;
   }
 
-  // Update notice
-  Future<void> updateNotice(NoticeModel notice) async {
+  // Update notice with optional image upload
+  Future<void> updateNotice({
+    required NoticeModel notice,
+    String? imagePath,
+    List<int>? imageBytes,
+    bool removeImage = false,
+  }) async {
+    String? currentImageUrl = notice.imageUrl;
+
+    // Remove image if requested
+    if (removeImage && currentImageUrl != null) {
+      currentImageUrl = null;
+    }
+
+    // Upload new image to ImgBB if provided (optional)
+    if ((imagePath != null && imagePath.isNotEmpty) || (imageBytes != null && imageBytes.isNotEmpty)) {
+      try {
+        final uploadedUrl = await ImgBBService.safeUpload(
+          file: imagePath != null ? File(imagePath) : null,
+          bytes: imageBytes,
+          fileName: imagePath?.split('/').last,
+        );
+        if (uploadedUrl != null) {
+          currentImageUrl = uploadedUrl;
+        } else {
+          currentImageUrl = null;
+        }
+      } catch (e) {
+        // Gracefully handle upload failure - keep old image or remove if explicitly requested
+        if (currentImageUrl == null && (imagePath != null || imageBytes != null)) {
+          currentImageUrl = null;
+        }
+      }
+    }
+
+    final updatedNotice = notice.copyWith(
+      imageUrl: currentImageUrl,
+    );
+
     await _firestore
         .collection(FirebaseService.noticesCollection)
         .doc(notice.id)
-        .update(notice.toMap());
+        .update(updatedNotice.toMap());
 
     if (notice.status == NoticeStatus.approved) {
       await _notificationService.sendToRole(
@@ -140,6 +206,12 @@ class NoticeService {
   // Delete notice
   Future<void> deleteNotice(String noticeId) async {
     final notice = await getNotice(noticeId);
+
+    // Files are hosted on ImgBB - no local storage to clean up
+    if (notice != null && notice.hasFile) {
+      // Consider implementing ImgBB deletion if needed
+    }
+
     await _firestore
         .collection(FirebaseService.noticesCollection)
         .doc(noticeId)
@@ -256,6 +328,41 @@ class NoticeService {
     return snapshot.count ?? 0;
   }
 
+  // Get total notices count across system (admin/super admin view)
+  Future<int> getAllNoticesCount() async {
+    final snapshot = await _firestore
+        .collection(FirebaseService.noticesCollection)
+        .count()
+        .get();
+    return snapshot.count ?? 0;
+  }
+
+  // Get total pending notices count across system (admin/super admin view)
+  Future<int> getAllPendingNoticesCount() async {
+    final snapshot = await _firestore
+        .collection(FirebaseService.noticesCollection)
+        .where('status', isEqualTo: 'pending')
+        .count()
+        .get();
+    return snapshot.count ?? 0;
+  }
+
+  // Get total likes count across all notices (admin/super admin view)
+  Future<int> getAllLikesCount() async {
+    final snapshot = await _firestore
+        .collection(FirebaseService.noticesCollection)
+        .get();
+
+    int totalLikes = 0;
+    for (var doc in snapshot.docs) {
+      final likesCount = doc.data()['likesCount'];
+      totalLikes += likesCount is int
+          ? likesCount
+          : int.tryParse(likesCount?.toString() ?? '0') ?? 0;
+    }
+    return totalLikes;
+  }
+
   // Get total likes count for author notices
   Future<int> getTotalLikesByAuthor(String authorId) async {
     final snapshot = await _firestore
@@ -265,7 +372,10 @@ class NoticeService {
 
     int totalLikes = 0;
     for (var doc in snapshot.docs) {
-      totalLikes += (doc.data()['likesCount'] ?? 0) as int;
+      final likesCount = doc.data()['likesCount'];
+      totalLikes += likesCount is int
+          ? likesCount
+          : int.tryParse(likesCount?.toString() ?? '0') ?? 0;
     }
     return totalLikes;
   }
@@ -276,11 +386,26 @@ class NoticeService {
     return snapshot.count ?? 0;
   }
 
-  // Get total students count
+  // Get total students count (registered + anonymous sessions)
   Future<int> getTotalStudentsCount() async {
-    final snapshot = await _firestore
+    final studentsSnapshot = await _firestore
         .collection(FirebaseService.usersCollection)
         .where('role', isEqualTo: 'student')
+        .count()
+        .get();
+
+    final sessionsSnapshot = await _firestore
+        .collection('student_sessions')
+        .count()
+        .get();
+
+    return (studentsSnapshot.count ?? 0) + (sessionsSnapshot.count ?? 0);
+  }
+
+  // Get total users count from users collection
+  Future<int> getAllUsersCount() async {
+    final snapshot = await _firestore
+        .collection(FirebaseService.usersCollection)
         .count()
         .get();
     return snapshot.count ?? 0;
@@ -310,7 +435,10 @@ class NoticeService {
 
       final data = snapshot.data()!;
       final likedBy = List<String>.from(data['likedBy'] ?? []);
-      final currentLikes = data['likesCount'] ?? 0;
+      final currentLikesRaw = data['likesCount'];
+      final currentLikes = currentLikesRaw is int
+          ? currentLikesRaw
+          : int.tryParse(currentLikesRaw?.toString() ?? '0') ?? 0;
 
       if (likedBy.contains(deviceId)) {
         // User already liked - unlike

@@ -12,7 +12,10 @@ class FirebaseService {
 
   // Firebase must be initialized before accessing this getter
   static firebase_core.FirebaseApp get app {
-    assert(_app != null, 'Firebase has not been initialized. Call Firebase.initializeApp() first in main.dart');
+    assert(
+      _app != null,
+      'Firebase has not been initialized. Call Firebase.initializeApp() first in main.dart',
+    );
     return _app!;
   }
 
@@ -44,4 +47,5 @@ class FirebaseService {
   static const String feedbackCollection = 'feedback';
   static const String faqsCollection = 'faqs';
   static const String notificationsCollection = 'notifications';
+  static const String eventsCollection = 'events';
 }

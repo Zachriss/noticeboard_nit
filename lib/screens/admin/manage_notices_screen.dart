@@ -4,6 +4,7 @@ import '../../services/notice_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/notice_model.dart';
 import 'create_notice_screen.dart';
+import '../student/notice_details_screen.dart';
 
 class ManageNoticesScreen extends StatefulWidget {
   const ManageNoticesScreen({super.key});
@@ -26,6 +27,27 @@ class _ManageNoticesScreenState extends State<ManageNoticesScreen> {
   Future<void> _loadUserId() async {
     final user = _authService.currentUser;
     if (mounted) setState(() => _userId = user?.uid);
+  }
+
+  Future<void> _approveNotice(NoticeModel notice) async {
+    try {
+      await _noticeService.approveNotice(notice.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Notice approved successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to approve: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -143,12 +165,21 @@ class _ManageNoticesScreenState extends State<ManageNoticesScreen> {
           style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
         ),
         trailing: PopupMenuButton<String>(
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'edit', child: Text('Edit')),
-            const PopupMenuItem(value: 'delete', child: Text('Delete')),
-          ],
+          itemBuilder: (context) {
+            final items = <PopupMenuEntry<String>>[];
+            if (notice.status == NoticeStatus.pending) {
+              items.add(const PopupMenuItem(value: 'approve', child: Text('Approve')));
+            }
+            items.addAll([
+              const PopupMenuItem(value: 'edit', child: Text('Edit')),
+              const PopupMenuItem(value: 'delete', child: Text('Delete')),
+            ]);
+            return items;
+          },
           onSelected: (value) {
-            if (value == 'edit') {
+            if (value == 'approve') {
+              _approveNotice(notice);
+            } else if (value == 'edit') {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -164,7 +195,7 @@ class _ManageNoticesScreenState extends State<ManageNoticesScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => CreateNoticeScreen(notice: notice),
+              builder: (_) => NoticeDetailScreen(notice: notice),
             ),
           );
         },

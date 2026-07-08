@@ -1,77 +1,121 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/services/firebase_service.dart';
+import '../services/student_auth_service.dart';
 
 class LikeService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final StudentAuthService _studentAuth = StudentAuthService();
 
-  // Toggle like on a notice
-  Future<bool> toggleLike(String noticeId, String userId) async {
-    final likeRef = _firestore
-        .collection(FirebaseService.likesCollection)
-        .doc('${noticeId}_$userId');
-
-    final doc = await likeRef.get();
-
-    if (doc.exists) {
-      // Unlike
-      await likeRef.delete();
-      await _updateLikesCount(noticeId, false);
-      return false;
-    } else {
-      // Like
-      await likeRef.set({
-        'noticeId': noticeId,
-        'userId': userId,
-        'createdAt': Timestamp.fromDate(DateTime.now()),
-      });
-      await _updateLikesCount(noticeId, true);
-      return true;
+  /// Returns the authenticated student UID.
+  /// Attempts to sign in anonymously if no user is authenticated.
+  /// Throws if authentication fails entirely.
+  Future<String> _getStudentUid() async {
+    try {
+      final user = await _studentAuth.signInAnonymously();
+      return user.uid;
+    } catch (e) {
+      throw Exception(
+        'You must be signed in to like notices. Authentication failed: $e',
+      );
     }
   }
 
-  // Check if user liked a notice
-  Future<bool> isLiked(String noticeId, String userId) async {
-    final doc = await _firestore
-        .collection(FirebaseService.likesCollection)
-        .doc('${noticeId}_$userId')
-        .get();
-    return doc.exists;
+  Future<String> _likeDocumentId(String noticeId) async {
+    final uid = await _getStudentUid();
+    return '${noticeId}_$uid';
   }
 
-  // Get likes count for a notice
-  Future<int> getLikesCount(String noticeId) async {
-    final snapshot = await _firestore
-        .collection(FirebaseService.likesCollection)
-        .where('noticeId', isEqualTo: noticeId)
-        .get();
-    return snapshot.docs.length;
+  Future<bool> isLiked(String noticeId) async {
+    try {
+      final docId = await _likeDocumentId(noticeId);
+      final likeRef = _firestore
+          .collection(FirebaseService.likesCollection)
+          .doc(docId);
+
+      final doc = await likeRef.get();
+      return doc.exists;
+    } catch (e) {
+      throw Exception('Failed to check like status: $e');
+    }
   }
 
-  // Get users who liked a notice
-  Stream<List<String>> getLikedUsers(String noticeId) {
+  /// Streams the like count by counting documents in the likes collection
+  /// where noticeId matches. This avoids needing to update the notices document.
+  Stream<int> likesCountStream(String noticeId) {
     return _firestore
         .collection(FirebaseService.likesCollection)
         .where('noticeId', isEqualTo: noticeId)
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => doc['userId'] as String).toList(),
-        );
+        .map((snapshot) => snapshot.docs.length);
   }
 
-  Future<void> _updateLikesCount(String noticeId, bool increment) async {
-    final noticeRef = _firestore
-        .collection(FirebaseService.noticesCollection)
-        .doc(noticeId);
+  Future<bool> likeNotice(String noticeId) async {
+    try {
+      final uid = await _getStudentUid();
+      final docId = await _likeDocumentId(noticeId);
+      final likeRef = _firestore
+          .collection(FirebaseService.likesCollection)
+          .doc(docId);
 
-    await _firestore.runTransaction((transaction) async {
-      final notice = await transaction.get(noticeRef);
-      if (notice.exists) {
-        final currentLikes = notice.data()?['likesCount'] ?? 0;
-        transaction.update(noticeRef, {
-          'likesCount': increment ? currentLikes + 1 : currentLikes - 1,
-        });
+      final doc = await likeRef.get();
+      if (doc.exists) {
+        return false;
       }
-    });
+
+      await likeRef.set({
+        'noticeId': noticeId,
+        'studentUid': uid,
+        'createdAt': Timestamp.fromDate(DateTime.now()),
+      });
+
+      return true;
+    } catch (e) {
+      throw Exception('Failed to like notice: $e');
+    }
+  }
+
+  Future<bool> unlikeNotice(String noticeId) async {
+    try {
+      final docId = await _likeDocumentId(noticeId);
+      final likeRef = _firestore
+          .collection(FirebaseService.likesCollection)
+          .doc(docId);
+
+      final doc = await likeRef.get();
+      if (!doc.exists) {
+        return false;
+      }
+
+      await likeRef.delete();
+      return true;
+    } catch (e) {
+      throw Exception('Failed to unlike notice: $e');
+    }
+  }
+
+  Future<bool> toggleLike(String noticeId) async {
+    try {
+      final uid = await _getStudentUid();
+      final docId = await _likeDocumentId(noticeId);
+      final likeRef = _firestore
+          .collection(FirebaseService.likesCollection)
+          .doc(docId);
+
+      final doc = await likeRef.get();
+
+      if (doc.exists) {
+        await likeRef.delete();
+        return false;
+      } else {
+        await likeRef.set({
+          'noticeId': noticeId,
+          'studentUid': uid,
+          'createdAt': Timestamp.fromDate(DateTime.now()),
+        });
+        return true;
+      }
+    } catch (e) {
+      throw Exception('Failed to toggle like: $e');
+    }
   }
 }

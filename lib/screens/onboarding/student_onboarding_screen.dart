@@ -33,8 +33,7 @@ class _StudentOnboardingScreenState extends State<StudentOnboardingScreen> {
     'First Year',
     'Second Year',
     'Third Year',
-    'Fourth Year',
-    'Final Year'
+    'Fourth Year'
   ];
 
   Future<void> _saveProfile() async {
@@ -110,7 +109,7 @@ class _StudentOnboardingScreenState extends State<StudentOnboardingScreen> {
                 DropdownButtonFormField<String>(
                   initialValue: _selectedDepartment,
                   decoration: const InputDecoration(
-                    labelText: 'Department',
+                    labelText: 'Course',
                     prefixIcon: Icon(Icons.business_outlined),
                   ),
                   items: _departments.map((dept) {
