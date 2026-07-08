@@ -14,7 +14,7 @@ import '../../services/auth_service.dart';
 import '../notifications/notification_screen.dart';
 import 'notice_details_screen.dart';
 import 'profile_setup_screen.dart';
-import 'favourite_screen.dart';
+import 'scams_screen.dart';
 import 'feedback_screen.dart';
 import 'faq_screen.dart';
 import '../auth/login_screen.dart';
@@ -85,7 +85,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             index: provider.currentIndex,
             children: [
               _buildHomeTab(),
-              const FavouriteScreen(),
+              const ScamsScreen(),
               const FeedbackScreen(),
               const FaqScreen(),
             ],
@@ -102,8 +102,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
               BottomNavigationBarItem(
-                icon: Icon(Icons.favorite),
-                label: 'Favourite',
+                icon: Icon(Icons.warning_amber_rounded),
+                label: 'Scams',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.feedback),
