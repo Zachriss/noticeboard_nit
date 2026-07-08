@@ -44,6 +44,7 @@ class AppStrings {
     'Library',
     'Placement',
     'Sports',
+    'Scams/Fraud',
     'General',
   ];
 

@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart' as firebase_core;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../core/services/firebase_service.dart';
+import 'notification_service.dart';
 
 class AuthService {
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
@@ -121,6 +122,9 @@ class AuthService {
 
       if (credential.user == null) return null;
 
+      // Persist the FCM token now that the admin/super admin is signed in.
+      await _saveFcmToken(credential.user!.uid);
+
       return await getUserData(credential.user!.uid);
     } on firebase_auth.FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
@@ -130,6 +134,20 @@ class AuthService {
   // Logout
   Future<void> logout() async {
     await _auth.signOut();
+  }
+
+  /// Persists the current FCM token under users/{uid}/fcmToken when present.
+  Future<void> _saveFcmToken(String uid) async {
+    try {
+      final token = await NotificationService().getFcmToken();
+      if (token == null || token.isEmpty) return;
+      await _firestore
+          .collection(FirebaseService.usersCollection)
+          .doc(uid)
+          .set(<String, dynamic>{'fcmToken': token}, SetOptions(merge: true));
+    } catch (_) {
+      // Token persistence is best-effort.
+    }
   }
 
   // Get user data from Firestore

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/constants/app_strings.dart';
 import '../../services/auth_service.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../models/user_model.dart';
@@ -16,15 +17,7 @@ class CategoriesScreen extends StatefulWidget {
 }
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
-  final List<String> _categories = [
-    'Academic',
-    'Exams',
-    'Events',
-    'Library',
-    'Placement',
-    'Sports',
-    'General',
-  ];
+  final List<String> _categories = List.from(AppStrings.categories);
   final AuthService _authService = AuthService();
   UserModel? _user;
 

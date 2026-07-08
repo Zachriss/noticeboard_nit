@@ -34,16 +34,9 @@ class _CreateNoticeScreenState extends State<CreateNoticeScreen> {
   String? _imageError;
   Uint8List? _imageBytes;
 
-
-  final List<String> _categories = [
-    'Academic',
-    'Exams',
-    'Events',
-    'Library',
-    'Placement',
-    'Sports',
-    'General',
-  ];
+  // Categories are sourced from the shared AppStrings constant so they stay
+  // consistent across the entire system (including the super admin managed list).
+  final List<String> _categories = List.from(AppStrings.categories);
 
   @override
   void initState() {

@@ -15,6 +15,8 @@ import 'providers/feedback_provider.dart';
 import 'services/notification_service.dart';
 import 'services/student_auth_service.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -37,6 +39,7 @@ void main() async {
 
   // FCM notifications not supported on web; skip gracefully
   try {
+    NotificationService.navigatorKey = navigatorKey;
     await NotificationService().initializeNotificationSystem();
   } catch (e) {
     debugPrint('NotificationService initialization skipped: $e');
@@ -63,6 +66,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'NIT Notice Board',
       theme: AppTheme.lightTheme,
+      navigatorKey: navigatorKey,
       home: const SplashScreen(),
     );
   }
@@ -116,6 +120,11 @@ class _SplashScreenState extends State<SplashScreen> {
       try {
         final studentAuth = StudentAuthService();
         await studentAuth.signInAnonymously();
+        // Persist the FCM token now that the student is authenticated.
+        final token = await NotificationService().getFcmToken();
+        if (token != null && token.isNotEmpty) {
+          await NotificationService().saveTokenForCurrentUser(token);
+        }
       } catch (e) {
         debugPrint('Anonymous auth failed: $e');
       }

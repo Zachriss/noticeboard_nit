@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/constants/app_strings.dart';
 import '../../models/notice_model.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/bottom_navigation_provider.dart';
@@ -37,13 +38,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   String? _selectedCategory;
   final TextEditingController _searchController = TextEditingController();
 
-  final List<String> _categories = [
-    'All',
-    'Academic',
-    'Exams',
-    'Events',
-    'General',
-  ];
+  // "All" plus every system category so all categories (including Scams/Fraud)
+  // are available in the student filter.
+  final List<String> _categories = ['All', ...AppStrings.categories];
 
   @override
   void initState() {
@@ -314,9 +311,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   Widget _buildNoticesList() {
     return StreamBuilder<List<NoticeModel>>(
-      stream: _selectedCategory != null
-          ? _noticeService.getNoticesByCategory(_selectedCategory!)
-          : _noticeService.getAllNotices(),
+      // Always use the indexed "approved + createdAt" query, then filter
+      // category/search client-side. This avoids needing a composite index
+      // on (status, category, createdAt) which would fail when online.
+      stream: _noticeService.getAllNotices(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -343,6 +341,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         }
 
         var notices = snapshot.data ?? [];
+
+        // Filter by selected category (client-side)
+        if (_selectedCategory != null) {
+          notices = notices
+              .where((n) => n.category == _selectedCategory)
+              .toList();
+        }
 
         // Filter by search text
         if (_searchText.isNotEmpty) {

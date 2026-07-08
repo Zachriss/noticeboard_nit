@@ -195,6 +195,8 @@ class _NoticeCardState extends State<NoticeCard> {
         return AppTheme.secondaryColor;
       case 'events':
         return Colors.green;
+      case 'scams/fraud':
+        return Colors.deepOrange;
       default:
         return AppTheme.primaryColor;
     }
