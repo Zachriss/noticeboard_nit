@@ -25,18 +25,6 @@ class _NoticeCardState extends State<NoticeCard> {
   bool _isLiked = false;
   bool _isLoadingLike = false;
 
-  Future<void> _loadLikeStatus() async {
-    try {
-      final liked = await _likeService.isLiked(widget.notice.id);
-      if (!mounted) return;
-      setState(() {
-        _isLiked = liked;
-      });
-    } catch (_) {
-      // No-op: if like state fails to load, keep default value.
-    }
-  }
-
   Future<void> _toggleLike() async {
     if (_isLoadingLike) return;
 

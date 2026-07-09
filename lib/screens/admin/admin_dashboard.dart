@@ -205,7 +205,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _buildHomeTab(),
           const ManageNoticesScreen(),
           const AdminFeedbackScreen(),
-          const SuperAdminProfileScreen(),
+          const FaqManageScreen(),
         ],
       ),
       floatingActionButton: _currentIndex == 1
@@ -231,7 +231,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             icon: Icon(Icons.feedback),
             label: 'Feedback',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.help), label: 'FAQs'),
         ],
       ),
     );

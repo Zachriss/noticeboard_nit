@@ -54,12 +54,6 @@ class _NoticeDetailScreenState extends State<NoticeDetailScreen> {
     }
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
   void _showFullScreenImage() {
     if (widget.notice.imageUrl == null) return;
 
