@@ -279,6 +279,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   if (value == null || value.isEmpty) {
                     return 'Please enter your name';
                   }
+                  // Only allow alphabetic characters (A-Z, a-z) and spaces
+                  final nameRegex = RegExp(r'^[a-zA-Z\s]+$');
+                  if (!nameRegex.hasMatch(value)) {
+                    return 'Name must contain only letters and spaces';
+                  }
                   return null;
                 },
               ),
@@ -342,6 +347,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter your phone number';
+                  }
+                  final phone = value.trim();
+                  // Must be exactly 10 digits and start with 06 or 07
+                  final phoneRegex = RegExp(r'^(06|07)\d{8}$');
+                  if (!phoneRegex.hasMatch(phone)) {
+                    if (phone.length != 10) {
+                      return 'Phone number must be exactly 10 digits';
+                    }
+                    if (!phone.startsWith('06') && !phone.startsWith('07')) {
+                      return 'Phone number must start with 06 or 07';
+                    }
+                    return 'Enter a valid phone number';
                   }
                   return null;
                 },
