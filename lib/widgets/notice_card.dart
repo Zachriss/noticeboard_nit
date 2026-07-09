@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
 import '../models/notice_model.dart';
 import '../services/like_service.dart';
+import '../services/image_cache_service.dart';
 
 class NoticeCard extends StatefulWidget {
   final NoticeModel notice;
@@ -79,11 +80,27 @@ class _NoticeCardState extends State<NoticeCard> {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(12),
                 ),
-                child: Image.network(
-                  widget.notice.imageUrl!,
+                child: ImageCacheService().buildCachedImage(
+                  imageUrl: widget.notice.imageUrl!,
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  placeholder: Container(
+                    height: 180,
+                    width: double.infinity,
+                    color: Colors.grey[300],
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                  errorWidget: Container(
+                    height: 180,
+                    width: double.infinity,
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                    ),
+                  ),
                 ),
               ),
             Padding(

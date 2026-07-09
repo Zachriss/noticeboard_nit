@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/notice_model.dart';
 import '../../services/like_service.dart';
+import '../../services/image_cache_service.dart';
 
 class NoticeDetailScreen extends StatefulWidget {
   final NoticeModel notice;
@@ -173,26 +174,23 @@ class _NoticeDetailScreenState extends State<NoticeDetailScreen> {
                   if (hasImage)
                     GestureDetector(
                       onTap: _showFullScreenImage,
-                      child: Image.network(
-                        widget.notice.imageUrl!,
+                      child: ImageCacheService().buildCachedImage(
+                        imageUrl: widget.notice.imageUrl!,
                         width: double.infinity,
                         fit: BoxFit.contain,
-                        errorBuilder: (context, obj, stack) => SizedBox(
+                        placeholder: const SizedBox(
+                          height: 180,
+                          child: Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        errorWidget: SizedBox(
                           height: 180,
                           child: Center(
                             child: Icon(Icons.broken_image,
                                 size: 64, color: Colors.grey.shade400),
                           ),
                         ),
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return const SizedBox(
-                            height: 180,
-                            child: Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          );
-                        },
                       ),
                     ),
 
@@ -366,10 +364,15 @@ class _FullScreenImageState extends State<_FullScreenImage> {
           child: InteractiveViewer(
             minScale: 0.5,
             maxScale: 4.0,
-            child: Image.network(
-              widget.imageUrl,
+            child: ImageCacheService().buildCachedImage(
+              imageUrl: widget.imageUrl,
               fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => const Center(
+              placeholder: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(Colors.white70),
+                ),
+              ),
+              errorWidget: const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -382,18 +385,6 @@ class _FullScreenImageState extends State<_FullScreenImage> {
                   ],
                 ),
               ),
-              loadingBuilder: (_, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                        : null,
-                    color: Colors.white,
-                  ),
-                );
-              },
             ),
           ),
         ),
