@@ -53,7 +53,7 @@ class AboutScreen extends StatelessWidget {
 
             // Description
             const Text(
-              'Official noticeboard application for National Institute of Transportstudents. Stay updated with all academic announcements, exam schedules, events, and important notices in real-time.',
+              'Official online noticeboard Mobile application for National Institute of Transport students. Stay updated with all academic announcements, exam schedules, events, scams/fraud,sports, library, placement  and important notices in real-time.',
               style: TextStyle(
                 fontSize: 15,
                 height: 1.5,

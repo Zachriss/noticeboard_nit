@@ -181,7 +181,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert),
           itemBuilder: (context) => [
-            const PopupMenuItem(value: 'downloads', child: Text('Downloads')),
             const PopupMenuItem(
               value: 'help_center',
               child: Text('Help Center'),
@@ -190,7 +189,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             const PopupMenuItem(value: 'about', child: Text('About App')),
             const PopupMenuItem(
               value: 'admin_login',
-              child: Text('Admin Login'),
+              child: Text('SONIT Login'),
             ),
           ],
           onSelected: (value) {

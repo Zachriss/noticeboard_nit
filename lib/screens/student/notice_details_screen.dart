@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/notice_model.dart';
 import '../../services/like_service.dart';
@@ -20,6 +22,70 @@ class _NoticeDetailScreenState extends State<NoticeDetailScreen> {
   final LikeService _likeService = LikeService();
   bool _isLiked = false;
   bool _isLoading = false;
+  final List<TapGestureRecognizer> _linkRecognizers = [];
+  static final _urlPattern = RegExp(r'(https?://[^\s]+)', caseSensitive: false);
+
+  Future<void> _openLink(String? url) async {
+    if (url == null || url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open link: $url')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open link: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildLinkableDescription(String text) {
+    final matches = _urlPattern.allMatches(text);
+    if (matches.isEmpty) {
+      return Text(
+        text,
+        style: const TextStyle(fontSize: 16, height: 1.6, color: AppTheme.textPrimary),
+      );
+    }
+
+    final spans = <TextSpan>[];
+    var lastEnd = 0;
+    for (final match in matches) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: const TextStyle(fontSize: 16, height: 1.6, color: AppTheme.textPrimary),
+        ));
+      }
+      final url = match.group(0)!;
+      final recognizer = TapGestureRecognizer()..onTap = () => _openLink(url);
+      _linkRecognizers.add(recognizer);
+      spans.add(TextSpan(
+        text: url,
+        style: const TextStyle(
+          color: Colors.blue,
+          decoration: TextDecoration.underline,
+          fontSize: 16,
+          height: 1.6,
+        ),
+        recognizer: recognizer,
+      ));
+      lastEnd = match.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: const TextStyle(fontSize: 16, height: 1.6, color: AppTheme.textPrimary),
+      ));
+    }
+    return RichText(text: TextSpan(children: spans));
+  }
 
   @override
   void initState() {
@@ -63,6 +129,14 @@ class _NoticeDetailScreenState extends State<NoticeDetailScreen> {
         builder: (_) => _FullScreenImage(imageUrl: widget.notice.imageUrl!),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    for (final recognizer in _linkRecognizers) {
+      recognizer.dispose();
+    }
+    super.dispose();
   }
 
   @override
@@ -154,14 +228,7 @@ class _NoticeDetailScreenState extends State<NoticeDetailScreen> {
                   const SizedBox(height: 24),
 
                   // Description
-                  Text(
-                    widget.notice.description,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      height: 1.6,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
+                  _buildLinkableDescription(widget.notice.description),
                   const SizedBox(height: 32),
 
                   // Full-width image below description

@@ -84,11 +84,7 @@ service cloud.firestore {
 
     match /notices/{noticeId} {
 
-      // Anyone can read approved notices.
-      // isAdmin() handles safety for user doc existence.
-      allow read: if resource.data.status == 'approved'
-        || isAdmin()
-        || isStudent();
+      allow read: if isAdmin() || isStudent();
 
       // Only admins create notices
       allow create: if isAdmin();
