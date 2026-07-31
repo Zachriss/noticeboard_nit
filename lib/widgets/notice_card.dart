@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,23 +12,70 @@ class NoticeCard extends StatefulWidget {
   final NoticeModel notice;
   final VoidCallback? onTap;
   final bool showActions;
+  final bool isNew;
 
   const NoticeCard({
     super.key,
     required this.notice,
     this.onTap,
     this.showActions = true,
+    this.isNew = false,
   });
 
   @override
   State<NoticeCard> createState() => _NoticeCardState();
 }
 
-class _NoticeCardState extends State<NoticeCard> {
+class _NoticeCardState extends State<NoticeCard> with SingleTickerProviderStateMixin {
   final LikeService _likeService = LikeService();
   bool _isLiked = false;
   bool _isLoadingLike = false;
   final List<TapGestureRecognizer> _linkRecognizers = [];
+  bool _showNewBadge = true;
+  Timer? _newBadgeTimer;
+  late AnimationController _boomController;
+  late Animation<double> _boomAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _boomController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+    _boomAnim = CurvedAnimation(parent: _boomController, curve: Curves.elasticOut);
+    _startNewBadgeBlink();
+  }
+
+  void _startNewBadgeBlink() {
+    _newBadgeTimer?.cancel();
+    if (!widget.isNew) {
+      _showNewBadge = false;
+      return;
+    }
+    _showNewBadge = true;
+    _newBadgeTimer = Timer.periodic(const Duration(milliseconds: 700), (_) {
+      if (mounted) {
+        setState(() {
+          _showNewBadge = !_showNewBadge;
+        });
+        if (_showNewBadge) {
+          _boomController.forward(from: 0);
+        }
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant NoticeCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isNew != widget.isNew) {
+      _startNewBadgeBlink();
+    } else if (!widget.isNew) {
+      _newBadgeTimer?.cancel();
+      _showNewBadge = false;
+    }
+  }
 
   Future<void> _toggleLike() async {
     if (_isLoadingLike) return;
@@ -172,156 +220,222 @@ class _NoticeCardState extends State<NoticeCard> {
     );
   }
 
+  Widget _buildNewBadge() {
+    final show = widget.isNew && _showNewBadge;
+    return IgnorePointer(
+      ignoring: true,
+      child: ScaleTransition(
+        scale: _boomAnim,
+        child: AnimatedOpacity(
+          opacity: show ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 200),
+          child: Container(
+            margin: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: show ? Colors.deepOrange : Colors.redAccent,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: show
+                  ? [
+                      BoxShadow(
+                        color: Colors.deepOrangeAccent.withOpacity(0.9),
+                        blurRadius: 18,
+                        spreadRadius: 2,
+                      ),
+                      BoxShadow(
+                        color: Colors.orangeAccent.withOpacity(0.7),
+                        blurRadius: 12,
+                      ),
+                      BoxShadow(
+                        color: Colors.yellowAccent.withOpacity(0.5),
+                        blurRadius: 8,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Text(
+              'New',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                shadows: show
+                    ? const [
+                        Shadow(color: Colors.white70, blurRadius: 6, offset: Offset(0, 0)),
+                      ]
+                    : null,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (widget.notice.hasFile)
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
-                ),
-                child: ImageCacheService().buildCachedImage(
-                  imageUrl: widget.notice.imageUrl!,
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: Container(
-                    height: 180,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: CircularProgressIndicator(),
+    return Stack(
+      children: [
+        Card(
+          elevation: 2,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.notice.hasFile)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
                     ),
-                  ),
-                  errorWidget: Container(
-                    height: 180,
-                    width: double.infinity,
-                    color: Colors.grey[200],
-                    child: const Center(
-                      child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                    ),
-                  ),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getCategoryColor(
-                            widget.notice.category,
-                          ).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          widget.notice.category,
-                          style: TextStyle(
-                            color: _getCategoryColor(widget.notice.category),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    child: ImageCacheService().buildCachedImage(
+                      imageUrl: widget.notice.imageUrl!,
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      placeholder: Container(
+                        height: 180,
+                        width: double.infinity,
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: CircularProgressIndicator(),
                         ),
                       ),
-                      const Spacer(),
+                      errorWidget: Container(
+                        height: 180,
+                        width: double.infinity,
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getCategoryColor(
+                                widget.notice.category,
+                              ).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              widget.notice.category,
+                              style: TextStyle(
+                                color: _getCategoryColor(widget.notice.category),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Row(
+                            children: [
+                              Text(
+                                widget.notice.formattedDate,
+                                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                              ),
+                              _buildNewBadge(),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       Text(
-                        widget.notice.formattedDate,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        widget.notice.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildLinkableDescription(),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          if (widget.showActions)
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: _isLoadingLike ? null : _toggleLike,
+                                      icon: AnimatedSwitcher(
+                                        duration: const Duration(milliseconds: 250),
+                                        transitionBuilder: (child, animation) =>
+                                            ScaleTransition(scale: animation, child: child),
+                                        child: Icon(
+                                          _isLiked ? Icons.favorite : Icons.favorite_border,
+                                          key: ValueKey<bool>(_isLiked),
+                                          color: _isLiked ? Colors.red : Colors.grey[600],
+                                        ),
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                    StreamBuilder<int>(
+                                      stream: _likeService.likesCountStream(widget.notice.id),
+                                      initialData: widget.notice.likesCount,
+                                      builder: (context, snapshot) {
+                                        final likesCount =
+                                            snapshot.data ?? widget.notice.likesCount;
+                                        return Text(
+                                          '$likesCount',
+                                          style: TextStyle(color: Colors.grey[600]),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          if (widget.showActions)
+                            Expanded(
+                              child: Center(
+                                child: IconButton(
+                                  onPressed: _shareNotice,
+                                  icon: Icon(
+                                    Icons.share,
+                                    color: Colors.grey[600],
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                  tooltip: 'Share notice',
+                                ),
+                              ),
+                            ),
+                          Text(
+                            'Posted by ${widget.notice.authorName}',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.notice.title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                   const SizedBox(height: 8),
-                  _buildLinkableDescription(),
-                  const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Center(
-                            child: Row(
-                              children: [
-                                if (widget.showActions)
-                                  IconButton(
-                                    onPressed: _isLoadingLike ? null : _toggleLike,
-                                    icon: AnimatedSwitcher(
-                                      duration: const Duration(milliseconds: 250),
-                                      transitionBuilder: (child, animation) =>
-                                          ScaleTransition(scale: animation, child: child),
-                                      child: Icon(
-                                        _isLiked ? Icons.favorite : Icons.favorite_border,
-                                        key: ValueKey<bool>(_isLiked),
-                                        color: _isLiked ? Colors.red : Colors.grey[600],
-                                      ),
-                                    ),
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                StreamBuilder<int>(
-                                  stream: _likeService.likesCountStream(widget.notice.id),
-                                  initialData: widget.notice.likesCount,
-                                  builder: (context, snapshot) {
-                                    final likesCount =
-                                        snapshot.data ?? widget.notice.likesCount;
-                                    return Text(
-                                      '$likesCount',
-                                      style: TextStyle(color: Colors.grey[600]),
-                                    );
-                                  },
-                                ),
-                                if (widget.showActions)
-                                  IconButton(
-                                    onPressed: _shareNotice,
-                                    icon: Icon(
-                                      Icons.share,
-                                      color: Colors.grey[600],
-                                    ),
-                                    visualDensity: VisualDensity.compact,
-                                    tooltip: 'Share notice',
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Text(
-                          'Posted by ${widget.notice.authorName}',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -345,6 +459,8 @@ class _NoticeCardState extends State<NoticeCard> {
     for (final recognizer in _linkRecognizers) {
       recognizer.dispose();
     }
+    _newBadgeTimer?.cancel();
+    _boomController.dispose();
     super.dispose();
   }
 }

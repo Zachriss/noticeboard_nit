@@ -116,14 +116,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'profile', child: Text('Profile')),
-              const PopupMenuItem(value: 'settings', child: Text('Settings')),
-              const PopupMenuItem(value: 'reports', child: Text('Reports')),
-              const PopupMenuItem(
-                value: 'categories',
-                child: Text('Categories'),
-              ),
-              const PopupMenuItem(value: 'users', child: Text('Users')),
+             
+          
               const PopupMenuItem(
                 value: 'logout',
                 child: Text(

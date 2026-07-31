@@ -68,6 +68,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     }
   }
 
+  Future<void> _markNoticesAsViewed(List<NoticeModel> notices) async {
+    if (notices.isEmpty) return;
+    final approvedNotices = notices.where((n) => n.status == NoticeStatus.approved).toList();
+    if (approvedNotices.isEmpty) return;
+    final latest = approvedNotices.map((n) => n.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
+    await LocalStorage.setLastViewedNoticeTime(latest);
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -341,6 +349,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
         var notices = snapshot.data ?? [];
 
+        // Try to mark viewed notices based on latest approved notice time
+        final approvedNoticesNow = notices.where((n) => n.status == NoticeStatus.approved).toList();
+        if (approvedNoticesNow.isNotEmpty) {
+          final latestApprovedNow = approvedNoticesNow.map((n) => n.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
+          final lastViewed = LocalStorage.lastViewedNoticeTime;
+          final hasNew = lastViewed == null || latestApprovedNow.isAfter(lastViewed);
+          if (hasNew && mounted) {
+            _markNoticesAsViewed(notices);
+          }
+        }
+
         // Filter by selected category (client-side)
         if (_selectedCategory != null) {
           notices = notices
@@ -379,6 +398,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             final notice = notices[index];
             return NoticeCard(
               notice: notice,
+              isNew: notice.isNew,
               onTap: () {
                 Navigator.push(
                   context,

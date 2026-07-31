@@ -295,26 +295,6 @@ class _CreateNoticeScreenState extends State<CreateNoticeScreen> {
                   ),
                 ),
 
-              // Info Card
-              Card(
-                color: AppTheme.primaryColor,
-                child: const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: AppTheme.primaryColor),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Your notice will be submitted for approval by the super admin.',
-                          style: TextStyle(color: AppTheme.primaryColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
 
               // Submit Button
               ElevatedButton(

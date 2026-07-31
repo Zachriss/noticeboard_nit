@@ -123,4 +123,12 @@ class NoticeModel {
   }
 
   bool get hasFile => imageUrl != null && imageUrl!.isNotEmpty;
+
+  bool get isNew {
+    try {
+      return DateTime.now().difference(createdAt).inHours < 24;
+    } catch (_) {
+      return false;
+    }
+  }
 }

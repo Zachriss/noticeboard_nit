@@ -180,7 +180,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             icon: const Icon(Icons.more_vert),
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'profile', child: Text('Profile')),
-              const PopupMenuItem(value: 'settings', child: Text('Settings')),
+          
               const PopupMenuItem(
                 value: 'logout',
                 child: Text(

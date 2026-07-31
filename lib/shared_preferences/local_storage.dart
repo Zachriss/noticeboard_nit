@@ -19,6 +19,7 @@ class LocalStorage {
   static const String keyUserPhone = 'userPhone';
   static const String keyIsProfileSetup = 'isProfileSetup';
   static const String keyNotificationsEnabled = 'notificationsEnabled';
+  static const String keyLastViewedNoticeTime = 'lastViewedNoticeTime';
   static const String keyNotificationSoundEnabled = 'notificationSoundEnabled';
   static const String keyProfileImage = 'profileImage';
 
@@ -78,6 +79,21 @@ class LocalStorage {
   static bool get isProfileSetup => _prefs?.getBool(keyIsProfileSetup) ?? false;
   static Future<void> setProfileSetup(bool value) async {
     await _prefs?.setBool(keyIsProfileSetup, value);
+  }
+
+  // Last viewed notice timestamp (ISO8601 string)
+  static DateTime? get lastViewedNoticeTime {
+    final value = _prefs?.getString(keyLastViewedNoticeTime);
+    if (value == null || value.isEmpty) return null;
+    return DateTime.tryParse(value);
+  }
+
+  static Future<void> setLastViewedNoticeTime(DateTime? time) async {
+    if (time == null) {
+      await _prefs?.remove(keyLastViewedNoticeTime);
+    } else {
+      await _prefs?.setString(keyLastViewedNoticeTime, time.toIso8601String());
+    }
   }
 
   // Save student profile
